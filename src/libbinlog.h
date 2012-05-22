@@ -7,6 +7,7 @@
 typedef struct binlog_row_st{
 	int nfields;
 	int eventType;
+	int created; /*binlog event created  timestamp*/
 	Cell *row;
 	Cell *rowOld;
 }BinlogRow;
@@ -15,6 +16,7 @@ typedef struct binlog_client_st{
 	//for private use
 	BinlogRow *_rows;
 	int _lenRows;
+	//end private
 
 	DataSource *dataSource;
 	LogBuffer *logbuffer;

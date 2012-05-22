@@ -4,3 +4,23 @@ A library to parse mysql binary log
 
 TODO:
 decimal
+
+特性：
+1. 自己实现的mysql通信协议（不依赖libmysqlclient）
+2. 提供简单易用的API
+3. 支持ROW 格式的binlog（不支持statement）
+4. 可直接解析文件，或连接mysql模拟slave
+
+API：
+/*连接数据源*/
+BinlogClient *connectDataSource(const char*url,uint32_t position,uint32_t index,int serverId);
+/*获取一条数据*/
+BinlogRow* fetchOne(BinlogClient *bc);
+/*结束，释放掉BinlogClient*/
+void freeBinlogClient(BinlogClient *bc);
+问题：
+1. API封装的太狠 ,核心只有一个api：fetchOne，每调用一次，返回一条数据（可能是insert,delete,update的数据），可能很多需要的信息没有开放出来（比如event的创建时间戳 等）
+
+2. decimal类型没有测试，可能会有问题
+
+3. mysql5.5* 没有测试。
