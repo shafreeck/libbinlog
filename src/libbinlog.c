@@ -141,9 +141,12 @@ void freeBinlogRow(BinlogRow *br){
 BinlogRow* fetchOne(BinlogClient *bc){
 	bc->index ++;
 	if(bc->index>= bc->_lenRows){
+		/*free rows buffer malloced last time*/
+		if(bc->_rows){
+			free(bc->_rows);
+		}
 		RowsEvent *re = getRowsEvent(bc);	
 		if(re == NULL){
-			//bc->errstr = "error (fetchOne): when getRowsEvent";
 			snprintf(bc->errstr,BL_ERROR_SIZE,"%s",bc->dataSource->errstr);
 			return NULL;
 		}
@@ -153,6 +156,8 @@ BinlogRow* fetchOne(BinlogClient *bc){
 }
 BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t index,int serverid){
 	BinlogClient *bc =(BinlogClient *)malloc(sizeof(BinlogClient));
+	bc->_rows=NULL;
+	bc->_lenRows=0;
 
 	DataSource *ds = (DataSource*)malloc(sizeof(DataSource));
 	const char *fileName = NULL;
@@ -186,6 +191,10 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 
 void freeBinlogClient(BinlogClient *bc){
 	if(!bc)return;
+	if(bc->_rows){
+		free(bc->_rows);
+		bc->_rows = NULL;
+	}
 
 	if(bc->dataSource){
 		free(bc->dataSource);

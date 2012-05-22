@@ -26,8 +26,9 @@ typedef struct binlog_client_st{
 
 }BinlogClient;
 
-BinlogRow* fetchOne(BinlogClient *bc);
 BinlogClient *connectDataSource(const char*url,uint32_t position,uint32_t index,int serverId);
+BinlogRow* fetchOne(BinlogClient *bc);
+void freeBinlogClient(BinlogClient *bc);
 
 void printCell(Cell *cell);
 #endif

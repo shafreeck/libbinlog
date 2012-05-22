@@ -28,6 +28,7 @@ int main(int argc,char *argv[]){
 		}
 		printf("\n");
 	}
+	freeBinlogClient(bc);
 
 	return 0;
 }
