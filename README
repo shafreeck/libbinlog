@@ -1,0 +1,6 @@
+libbinlog
+
+A library to parse mysql binary log
+
+TODO:
+decimal

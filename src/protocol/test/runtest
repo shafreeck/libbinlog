@@ -1,0 +1,9 @@
+#!/bin/bash
+testcase="test_vio test_binary"
+
+for proc in $testcase
+do
+	 echo =========./$proc========
+	 ./$proc
+done
+
