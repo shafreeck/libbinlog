@@ -1,4 +1,5 @@
 #include "libbinlog.h"
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -53,79 +54,56 @@ void printCell(Cell *cell){
 
 	}
 }
-static RowsEvent *getRowsEvent(BinlogClient *bc){
-	TableMapEvent *tme = NULL;
+static int getRowsEvent(BinlogClient *bc,RowsEvent *rev){
 	for(;;){
 		void *ev = dsGetEvent(bc->dataSource);
 		if(ev == NULL)break;
-		LogBuffer *s = bc->logbuffer;
-		s->ev = ev;
-		s->cur = 0;
-		Header *h = parseEventHeader(s);
-		s->evLength = h->eventLength - 19; // notics ,we must set it!!! //TODO 19 should be instead by header length
 
-		if(h->typeCode==TABLE_MAP_EVENT){
-			/*If this is not the first TABLE_MAP_EVENT then free the previous one*/
-			if(bc->currentTable!=NULL){
-				freeTableMapEvent(bc->currentTable);
-			}
-			tme = parseTableMapEvent(s,h);
-			if(tme==NULL){
-				sprintf(bc->errstr,"%s",s->errstr);
-				goto error;
-			}
-			bc->currentTable = tme;
-			bc->dataSource->position = tme->header->nextPosition - tme->header->eventLength;
+		uint8_t evtype = getEventType(ev);
+		if(evtype==FORMAT_DESCRIPTION_EVENT){
+			parseFDE(&(bc->binlog),ev);
+		}
+		if(evtype==TABLE_MAP_EVENT){
+			TableEv *tblev = &(bc->binlog.table);
+			parseTableMapEvent(&(bc->binlog),&(bc->binlog.table),ev);
+			bc->dataSource->position = tblev->nextpos - tblev->evlen;
 			bc->dataSource->index = 0;
 
-		}else if(h->typeCode==WRITE_ROWS_EVENT || h->typeCode==UPDATE_ROWS_EVENT || h->typeCode==DELETE_ROWS_EVENT){
-			if(tme == NULL){
-				goto error;
-			}
-			RowsEvent *re = parseRowsEvent(s,h,tme);
+		}else if(evtype==WRITE_ROWS_EVENT || evtype==UPDATE_ROWS_EVENT || evtype==DELETE_ROWS_EVENT){
+			parseRowsEvent(&(bc->binlog),rev,ev);
 			dsFreeEvent(bc->dataSource);
-			return re;
-		}else if(h->typeCode==ROTATE_EVENT){
-			RotateEvent *rotate =  parseRotateEvent(s,h);
-			if(bc->dataSource->logfile) free(bc->dataSource->logfile);//FIXME:what if logfile is on stack
-			bc->dataSource->logfile = strdup(rotate->fileName);
-			freeRotateEvent(rotate);
-		}else{
-			freeHeader(h);
+			return 1;
+		}else if(evtype==ROTATE_EVENT){
+			RotateEvent rotate;
+			parseRotateEvent(&(bc->binlog),&rotate,ev);
+			bc->dataSource->position = rotate.position;
+			strcpy(bc->dataSource->logfile,rotate.fileName);
+			//TODO record the log file name
 		}
-error:
-		/*ingore error*/
 		dsFreeEvent(bc->dataSource);
-		continue;
 	}
 	/*anti warning*/
-	return NULL;
+	return 0;
 }
 static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
-	int nfields = bc->currentTable->nfields;
-	listIter *iter = listGetIterator(ev->pairs,AL_START_HEAD);
-	listNode *node = NULL;
-	bc->_lenRows = listLength(ev->pairs);
+	int nfields = ev->nfields;
+	bc->_lenRows = ev->nrows;
 	bc->_rows = (BinlogRow *)malloc(bc->_lenRows * sizeof(BinlogRow));
 	int i = 0;
-	//printf("bc->_lenRows is :%d\n",listLength(ev->pairs));
-	while((node=listNext(iter))){
+//	printf("bc->_lenRows is :%d\n",ev->nrows);
+	while(i < ev->nrows){
 		BinlogRow row;
 		row.nfields = nfields;
-		row.eventType = ev->header->typeCode;
+		row.eventType = ev->type;
 		row.rowOld = NULL;
-		if(row.eventType == WRITE_ROWS_EVENT || row.eventType == UPDATE_ROWS_EVENT){
-			row.row = ((RowPair*)(node->value))->rowNew;
-		}else if(row.eventType==DELETE_ROWS_EVENT){
-			row.row = ((RowPair*)(node->value))->rowOld;
-		}
+		row.row = ev->rows[i];
 		if(row.eventType == UPDATE_ROWS_EVENT){
-			row.rowOld = ((RowPair*)(node->value))->rowOld;
+			row.rowOld = ev->rowsold[i];
 		}
 		bc->_rows[i++] = row;
 		//printf("bc->rows[0] :%p,row:%p\n",&(bc->_rows[0]),&row);
 	}
-	free(iter);
+	freeRowsEv(ev);
 }
 static BinlogRow* fetchFromBuffer(BinlogClient *bc){
 	if(bc->dataSource->index < bc->_lenRows){
@@ -161,20 +139,19 @@ BinlogRow* fetchOne(BinlogClient *bc){
 			}
 			free(bc->_rows);
 		}
-		RowsEvent *re = getRowsEvent(bc);	
-		if(re == NULL){
+		RowsEvent rowsev;
+		int ret = getRowsEvent(bc,&rowsev);	
+		if(ret == 0){
 			snprintf(bc->errstr,BL_ERROR_SIZE,"%s",bc->dataSource->errstr);
 			return NULL;
 		}
-		setRowsEventBuffer(bc,re);
-		freeRowsEvent(re);
+		setRowsEventBuffer(bc,&rowsev);
 	}
 	return fetchFromBuffer(bc);
 }
 BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t index,int serverid){
 	BinlogClient *bc =(BinlogClient *)malloc(sizeof(BinlogClient));
 	bc->_rows=NULL;
-	bc->currentTable=NULL;
 	bc->_lenRows=0;
 
 	DataSource *ds = (DataSource*)malloc(sizeof(DataSource));
@@ -197,8 +174,6 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 		return bc;
 	}
 	bc->dataSource = ds;
-	LogBuffer *buffer = (LogBuffer*)malloc(sizeof(LogBuffer));
-	bc->logbuffer = buffer;
 
 	return bc;
 }
@@ -210,14 +185,6 @@ void freeBinlogClient(BinlogClient *bc){
 		dsClose(bc->dataSource);
 		free(bc->dataSource);
 		bc->dataSource = NULL;
-	}
-	if(bc->logbuffer){
-		free(bc->logbuffer);
-		bc->logbuffer = NULL;
-	}
-	if(bc->currentTable){
-		freeTableMapEvent(bc->currentTable);
-		bc->currentTable=NULL;
 	}
 	free(bc);
 	bc = NULL;

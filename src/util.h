@@ -3,7 +3,6 @@
 #define __UTIL_H
 
 #include <stdint.h>
-#include "logevent.h"
 #define getUint32(ev) (*(uint32_t*)(ev))
 #define getUint64(ev) (*(uint64_t*)(ev))
 #define getUint8(ev) (*(uint8_t*)(ev))

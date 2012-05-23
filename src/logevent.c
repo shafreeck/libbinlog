@@ -6,8 +6,63 @@
 #include "decimal.h"
 #include "logevent.h"
 #include "util.h"
+static uint32_t readUint32(EventCursor *evcur){
+	uint32_t v = getUint32(evcur->ev+evcur->cur);
+	evcur->cur += 4;
+	return v;
+}
+static uint64_t readUint64(EventCursor *evcur){
+	uint64_t v = getUint64(evcur->ev + evcur->cur);
+	evcur->cur += 8;
+	return v;
+}
+static uint8_t readUint8(EventCursor *evcur){
+	uint8_t v = getUint8(evcur->ev + evcur->cur);
+	evcur->cur += 1;
+	return v;
+}
+static uint16_t readUint16(EventCursor *evcur){
+	uint16_t v = getUint16(evcur->ev + evcur->cur);
+	evcur->cur += 2;
+	return v;
+}
+static uint64_t readUint48(EventCursor *evcur){
+	uint64_t v = getUint48(evcur->ev + evcur->cur);
+	evcur->cur += 6;
+	return v;
+}
+static uint32_t readUint24(EventCursor *evcur){
+	uint32_t v = getUint24(evcur->ev + evcur->cur);
+	evcur->cur += 3;
+	return v;
+}
+static int32_t readInt32(EventCursor *evcur){
+	int32_t v = getInt32(evcur->ev + evcur->cur);
+	evcur->cur += 4;
+	return v;
+}
+static int64_t readInt64(EventCursor *evcur){
+	int64_t v = getInt64(evcur->ev + evcur->cur);
+	evcur->cur += 8;
+	return v;
+}
+static int8_t readInt8(EventCursor *evcur){
+	int8_t v = getInt8(evcur->ev + evcur->cur);
+	evcur->cur += 1;
+	return v;
+}
+static int16_t readInt16(EventCursor *evcur){
+	int16_t v = getInt16(evcur->ev + evcur->cur);
+	evcur->cur += 2;
+	return v;
+}
+static int32_t readInt24(EventCursor *evcur){
+	int32_t v = getInt24(evcur->ev + evcur->cur);
+	evcur->cur += 3;
+	return v;
+}
 
-static int decodeint(uint8_t *ev ,uint32_t *cur){
+static uint64_t decodeint(uint8_t *ev ,uint32_t *cur){
 	uint8_t v = getInt8(ev);
 	*cur += 1;
 	if(v < 251) return v;
@@ -42,33 +97,33 @@ static uint16_t* decodeMetadata(int nfields,uint8_t *types, int lenMetadata, uin
 			case MYSQL_TYPE_SET:
 			case MYSQL_TYPE_ENUM:
 			case MYSQL_TYPE_STRING:
-			{
-				uint16_t x = (metadata[index++] << 8U); // real_type
-				x+= metadata[index++];            // pack or field length
-				meta[i]= x;
-				break;
-			}
+				{
+					uint16_t x = (metadata[index++] << 8U); // real_type
+					x+= metadata[index++];            // pack or field length
+					meta[i]= x;
+					break;
+				}
 			case MYSQL_TYPE_BIT:
-			{
-				uint16_t x= metadata[index++]; 
-				x = x + (metadata[index++] << 8U);
-				meta[i]= x;
-				break;
-			}
+				{
+					uint16_t x= metadata[index++]; 
+					x = x + (metadata[index++] << 8U);
+					meta[i]= x;
+					break;
+				}
 			case MYSQL_TYPE_VARCHAR:
-			{
-				char *ptr= (char *)&metadata[index];
-				meta[i]= getUint16(ptr);
-				index= index + 2;
-				break;
-			}
+				{
+					char *ptr= (char *)&metadata[index];
+					meta[i]= getUint16(ptr);
+					index= index + 2;
+					break;
+				}
 			case MYSQL_TYPE_NEWDECIMAL:
-			{
-				uint16_t x= metadata[index++] << 8U; // precision
-				x+= metadata[index++];            // decimals
-				meta[i]= x;
-				break;
-			}
+				{
+					uint16_t x= metadata[index++] << 8U; // precision
+					x+= metadata[index++];            // decimals
+					meta[i]= x;
+					break;
+				}
 			default:
 				meta[i]= 0;
 				break;
@@ -485,13 +540,14 @@ int parseHeader(Binlog *bl,Header *header,uint8_t *ev){
 		char extra[];
 	}*rawhdr =  (struct rawheader *)ev;
 	header->ts = getUint32(rawhdr->ts);
-	header->type = getUint8(rawhdr->type);
+	header->type = (uint8_t)(rawhdr->type);
 	header->serverid = getUint32(rawhdr->serverid);
 	header->evlen = getUint32(rawhdr->evlen);
 	header->nextpos = getUint32(rawhdr->nextpos);
 	header->flags = getUint16(rawhdr->flags);
 	header->extralen =  bl->hdrlen - 19;
 	header->extra = rawhdr->extra;
+	return 1;
 }
 /*Parse FormatDescriptionEvent and fill the struct Binlog*/
 int parseFDE(Binlog *bl,uint8_t *ev){
@@ -515,9 +571,10 @@ int parseFDE(Binlog *bl,uint8_t *ev){
 	int evlen = getUint32(fde->evlen);
 	assert((evlen-sizeof(struct rawfde)<=29));
 	memcpy(bl->posthdr,fde->posthdr,29);
+	return 1;
 }
-parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
-	int cur=0;
+int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
+	uint32_t cur=0;
 	struct rawheader{
 		char ts[4];
 		char type;
@@ -541,27 +598,27 @@ parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
 
 	struct rawstr *tblname =(struct rawstr*)(ev + cur);
 	cur += tblname->len + 1 + 1;
-	/*malloc of metadata and types, this should be freed  by parseRowEvent*/
+	/*malloc of metadata and types, this should be freed  by parseRowsEvent*/
 	uint32_t nfields;
-	cur +=  decodeint(ev+cur,&nfields);
+	nfields =(uint32_t) decodeint(ev+cur,&cur);
 
-	/*This should be freed  by parseRowEvent when not used*/
+	/*This should be freed  by parseRowsEvent when not used*/
 	uint8_t *types = malloc(nfields);
 	memcpy(types,ev+cur,nfields);
 	cur += nfields;
 	uint32_t  metalen;
-	cur += decodeint(ev+cur,&metalen);
-	uint8_t *meta = malloc(metalen);;
-	memcpy(meta,ev+cur,metalen);
+	metalen =(uint32_t) decodeint(ev+cur,&cur);
+	uint8_t *meta = ev+cur;;
 	cur += nfields;
 
 	uint8_t *canbenull=malloc(nfields); 
-	memcpy(types,ev+cur,nfields);
+	memcpy(canbenull,ev+cur,nfields);
 	cur += nfields;
 	/*fill values to TableEv */
 	tbl->ts = getUint32(rawhdr->ts);
 	tbl->serverid = getUint32(rawhdr->serverid);
 	tbl->nextpos  = getUint32(rawhdr->nextpos);
+	tbl->evlen  = getUint32(rawhdr->evlen);
 
 	strcpy(tbl->dbname,dbname->str);
 	strcpy(tbl->tblname,tblname->str);
@@ -573,7 +630,7 @@ parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
 	/*decode meta info here,from variable length to fix 16bytes*/
 	tbl->meta = decodeMetadata(nfields,types,metalen,meta);
 	/*free nonused meta,we will use tbl->meta after*/
-	free(meta);
+	return 1;
 }
 int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev){
 	uint32_t cur = bl->hdrlen;
@@ -582,9 +639,10 @@ int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev){
 	uint32_t left = getUint32(ev+9) - cur;
 	memcpy(rotate->fileName,ev+cur,left);
 	rotate->fileName[left]='\0';
+	return 1;
 }
 int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
-	int cur = 0;
+	uint32_t cur = 0;
 	Header hdr;
 	parseHeader(bl,&hdr,ev);
 	cur += bl->hdrlen;
@@ -599,7 +657,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	assert(rev->tableid==bl->table.tableid);
 
 	uint32_t nfields;
-	cur += decodeint(ev+cur,&nfields);
+	nfields =(uint32_t) decodeint(ev+cur,&cur);
 	assert(nfields==bl->table.nfields);
 	uint8_t *isused = ev+cur,*isused_u=NULL;
 	int bitlen = (int) (nfields+7)/8;
@@ -609,25 +667,25 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 		cur += bitlen; 
 	}
 	/*Decode the row images*/
-	int i,nrows;
+	int i,nrows=0;
 	Cell* cells,*cellsold;
 	int totalrows = 8;
 	Row *rows,*rowsold;
 	rows = rowsold = NULL;
-	rows = malloc(sizeof(Row*)*totalrows);
+	rows = malloc(sizeof(Row)*totalrows);
 	if(hdr.type==UPDATE_ROWS_EVENT)
-		rowsold = malloc(sizeof(Row*)*totalrows);
+		rowsold = malloc(sizeof(Row)*totalrows);
 	EventCursor evcur;
 	evcur.ev = ev;
 	evcur.cur = cur;
 	while(evcur.cur < hdr.evlen){
 		if(nrows >= totalrows){
 			totalrows *= 2;
-			rows = realloc(rows,sizeof(Row*)*totalrows);
-			rowsold = realloc(rows,sizeof(Row*)*totalrows);
+			rows = realloc(rows,sizeof(Row)*totalrows);
+			rowsold = realloc(rows,sizeof(Row)*totalrows);
 		}
-		uint8_t *isnull = ev + cur;
-		cur += bitlen; 
+		uint8_t *isnull = ev + evcur.cur;
+		evcur.cur += bitlen; 
 		cells = malloc(nfields*sizeof(Cell));
 		for(i = 0; i < nfields; ++i){
 			if(!isSet(isnull,i) && isSet(isused,i)){
@@ -636,17 +694,20 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 				Cell c = {0};
 				cells[i] = c;
 			}
-			rows[nrows] = cells;
 		}
+		rows[nrows] = cells;
+
 		if(hdr.type==UPDATE_ROWS_EVENT){
 			cellsold = malloc(nfields*sizeof(Cell));
-			isnull = ev + cur;
-			cur += bitlen; 
-			if(!isSet(isnull,i) && isSet(isused,i)){
-				cellsold[i] = value2Cell(&evcur,bl->table.types[i],bl->table.meta[i]);
-			}else{
-				Cell c = {0};
-				cellsold[i] = c;
+			isnull = ev + evcur.cur;
+			evcur.cur += bitlen; 
+			for(i = 0; i < nfields; ++i){
+				if(!isSet(isnull,i) && isSet(isused,i)){
+					cells[i] = value2Cell(&evcur,bl->table.types[i],bl->table.meta[i]);
+				}else{
+					Cell c = {0};
+					cells[i] = c;
+				}
 			}
 			rowsold[nrows] = cellsold;
 		}
@@ -656,4 +717,24 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	rev->rows = rows;
 	rev->rowsold = rowsold;
 	rev->nrows = nrows;
+	rev->nfields = nfields;
+	/*clean up Table map event malloced*/
+	free(bl->table.meta);
+	free(bl->table.types);
+	free(bl->table.canbenull);
+	return 1;
+}
+void freeRowsEv(RowsEvent *rowsev){
+	int i;
+/*	for(i = 0;i < rowsev->nrows ; ++i){
+		free(rowsev->rows[i]);
+	}*/
+	free(rowsev->rows);
+	if(rowsev->type==UPDATE_ROWS_EVENT){
+	/*	for(i = 0;i < rowsev->nrows ; ++i){
+			free(rowsev->rowsold[i]);
+		}*/
+		free(rowsev->rowsold);
+
+	}
 }

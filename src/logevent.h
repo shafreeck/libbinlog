@@ -2,6 +2,7 @@
 #define __LOGEVENT_H
 #include <stdint.h>
 #include "constant.h"
+#include "util.h"
 
 #define LOG_EVENT_HEADER_LEN 19     /* the fixed header length */
 
@@ -76,6 +77,7 @@ typedef struct table_st{
 	uint32_t ts;/*timestamp of table map event*/
 	uint32_t serverid;
 	uint32_t nextpos;
+	uint32_t evlen;
 
 	char dbname[256]; /*dbname length in binlog is 1 byte,so 256 will be enough*/
 	char tblname[256];
@@ -103,46 +105,21 @@ typedef struct eventcursor_st{
 	int cur;
 }EventCursor;
 
-typedef struct format_description_event_st{
-	Header header;
-	uint16_t blver; /*binlog version*/
-	char server[50]; /*server version*/
-	uint32_t createTimestamp;
-	uint8_t headerLength;
-	uint8_t* postHeaderLengths; //FIXME : replace by array
-
-}FormatDescriptionEvent;
-
 /*Parse FormatDescriptionEvent and fill the struct Binlog*/
 int parseFDE(Binlog *bl,uint8_t *ev);
-
-
-typedef struct table_map_event_st{
-	Header header;
-	uint64_t tableId;
-	uint16_t reserved;
-	char *dbName;
-	char *tableName;
-	uint32_t nfields;
-	uint8_t *fieldTypes;
-	uint32_t lenMetadata;
-	uint16_t *metadata;
-	uint8_t *isNulls;
-}TableMapEvent;
-
-parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
+int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
 
 typedef struct rotate_event_st{
 	uint64_t position;
 	char fileName[256];/*Just accept 255 bytes of binlog name here*/
 
 }RotateEvent;
-
 int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev);
 
 typedef struct rows_event_st{
 	uint8_t type;
 	uint32_t ts;
+	uint32_t evlen;
 	uint32_t nextpos;
 	uint32_t serverid;
 	uint64_t tableid;
@@ -154,4 +131,6 @@ typedef struct rows_event_st{
 
 }RowsEvent;
 int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev);
+void freeRowsEv(RowsEvent *rowsev);
+#define getEventType(ev) ((uint8_t)(((uint8_t*)ev)[EVENT_TYPE_OFFSET]))
 #endif
