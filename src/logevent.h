@@ -1,7 +1,7 @@
 #ifndef __LOGEVENT_H
 #define __LOGEVENT_H
 #include <stdint.h>
-#include "adlist.h"
+#include "constant.h"
 
 #define LOG_EVENT_HEADER_LEN 19     /* the fixed header length */
 
@@ -54,35 +54,71 @@ enum cpp_types {
 	STRING,
 	BINARY
 };
+typedef struct cell_st{
+	int cppType;
+	int mysqlType;
+	int length;
+	void *value;
+}Cell;
+
+typedef Cell* Row;
 typedef struct header_st{
-	uint32_t timestamp;
-	uint8_t typeCode;
-	uint32_t serverId;
-	uint32_t eventLength;
-	uint32_t nextPosition;
+	uint32_t ts;
+	uint8_t type;
+	uint32_t serverid;
+	uint32_t evlen;
+	uint32_t nextpos;
 	uint16_t flags;
-	void *extraHeaders;
+	uint8_t extralen;
+	char *extra;
 }Header;
-typedef struct logbuffer_st{
+typedef struct table_st{
+	uint32_t ts;/*timestamp of table map event*/
+	uint32_t serverid;
+	uint32_t nextpos;
+
+	char dbname[256]; /*dbname length in binlog is 1 byte,so 256 will be enough*/
+	char tblname[256];
+	int  nfields;
+	uint64_t tableid;
+
+	uint8_t *types;
+	uint8_t *canbenull;
+	uint16_t *meta;
+}TableEv;
+typedef  struct binlog_st{
+	uint32_t blver;/*binlog version*/
+	uint8_t hdrlen;/*header length*/
+	uint32_t masterid;/*I think masterid is  the serverid of FDE*/
+	char server[50];/*server version*/
+	char posthdr[29];/*post header length of each type event,now we total have 29 events*/
+	char errstr[BL_ERROR_SIZE];
+
+	TableEv table;
+}Binlog;
+
+int parseHeader(Binlog *bl,Header *header,uint8_t *ev);
+typedef struct eventcursor_st{
 	uint8_t *ev;
 	int cur;
-	uint32_t evLength;
-	char errstr[128];
-
-}LogBuffer;
+}EventCursor;
 
 typedef struct format_description_event_st{
-	Header *header;
-	uint32_t binlogVersion;
-	char serverVersion[50];
+	Header header;
+	uint16_t blver; /*binlog version*/
+	char server[50]; /*server version*/
 	uint32_t createTimestamp;
-	uint32_t headerLength;
+	uint8_t headerLength;
 	uint8_t* postHeaderLengths; //FIXME : replace by array
 
 }FormatDescriptionEvent;
 
+/*Parse FormatDescriptionEvent and fill the struct Binlog*/
+int parseFDE(Binlog *bl,uint8_t *ev);
+
+
 typedef struct table_map_event_st{
-	Header *header;
+	Header header;
 	uint64_t tableId;
 	uint16_t reserved;
 	char *dbName;
@@ -94,67 +130,28 @@ typedef struct table_map_event_st{
 	uint8_t *isNulls;
 }TableMapEvent;
 
+parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
+
 typedef struct rotate_event_st{
-	Header *header;
 	uint64_t position;
-	char *fileName;
+	char fileName[256];/*Just accept 255 bytes of binlog name here*/
 
 }RotateEvent;
 
+int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev);
+
 typedef struct rows_event_st{
-	Header *header;
-	uint64_t tableId;
-	uint16_t reserved;
-	uint32_t nfields;
-	uint8_t *isUseds;
-	uint8_t *isUsedsUpdate;
-	list *pairs; // a list of RowPair
+	uint8_t type;
+	uint32_t ts;
+	uint32_t nextpos;
+	uint32_t serverid;
+	uint64_t tableid;
+
+	uint32_t nfields; /*Count of fields*/
+	uint32_t nrows; /*Count of rows image*/
+	Row *rows;
+	Row *rowsold;
 
 }RowsEvent;
-/*
-   typedef struct update_rows_event_st{
-   Header *header;
-   uint8_t *isUseds;
-   uint8_t *isNulls;
-   list *pairs; // a list of RowPair
-
-   }UpdateRowsEvent;
-
-   typedef struct Delete_rows_event_st{
-   Header *header;
-   list *pairs; // a list of RowPair
-   uint8_t *isUseds;
-   uint8_t *isNulls;
-   list *rows;
-   }DeleteRowsEvent;
-   */
-typedef struct cell_st{
-	int cppType;
-	int mysqlType;
-	int length;
-	void *value;
-}Cell;
-typedef struct row_pair_st{
-	Cell* rowNew;
-	Cell* rowOld;
-}RowPair;
-
-Header *parseEventHeader(LogBuffer *logbuffer);
-FormatDescriptionEvent *parseFDE(LogBuffer*logbuffer,Header*header);
-TableMapEvent *parseTableMapEvent(LogBuffer *logbuffer, Header *header);
-RotateEvent *parseRotateEvent(LogBuffer *logbuffer, Header *header);
-RowsEvent *parseRowsEvent(LogBuffer *logbuffer,Header *header,TableMapEvent *tme);
-
-Header *createHeader();
-FormatDescriptionEvent *createFormatDescriptionEvent();
-TableMapEvent *createTableMapEvent();
-RotateEvent *createRotateEvent();
-RowsEvent *createRowsEvent();
-
-void freeHeader(Header *h);
-void freeFormatDescriptionEvent(FormatDescriptionEvent *fde);
-void freeTableMapEvent(TableMapEvent *tme);
-void freeRotateEvent(RotateEvent *rotate);
-void freeRowsEvent(RowsEvent *rowsev);
-
+int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev);
 #endif

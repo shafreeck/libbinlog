@@ -21,9 +21,6 @@ typedef struct binlog_client_st{
 	DataSource *dataSource;
 	LogBuffer *logbuffer;
 	TableMapEvent *currentTable;
-	uint64_t currentTablePosition;
-	char *fileName;
-	uint32_t index;
 	char errstr[BL_ERROR_SIZE];
 
 }BinlogClient;

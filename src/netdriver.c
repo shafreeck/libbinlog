@@ -79,6 +79,8 @@ static void parseMySQLUrl(DataSource *ds,const char *surl){
 	}
 	if(port)
 		ds->driver.net.port = atoi(port);
+	if(ds->logfile)
+		ds->logfile = strdup(ds->logfile);
 }
 static int connectMySQL(DataSource *ds){
 	MySQL *mysql  = &(ds->driver.net.mysql);
@@ -104,6 +106,7 @@ static int connectMySQL(DataSource *ds){
 }
 static int closeMySQL(DataSource *ds){
 	free(ds->url);
+	free(ds->logfile);
 	mclose(&(ds->driver.net.mysql));
 	return 1;
 }
@@ -141,7 +144,7 @@ static DataSource dsMySQL = {
 	getEventFromServer,
 	freeEventFromServer,
 	NULL,NULL,
-	4, 0,0,
+	4,0,0,
 	{{0}},
 };
 void dsInitWithMySQL(DataSource *ds,const char*url){

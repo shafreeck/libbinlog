@@ -13,19 +13,21 @@ int main(int argc,char *argv[]){
 	}
 	const char *url = argv[1];
 
-	BinlogClient *bc = connectDataSource(url,4,0,10);
+	BinlogClient *bc = connectDataSource(url,4,0,0);
 	if(!bc)return 1;
 	BinlogRow *row;
 	while(1){
 		row = fetchOne(bc);
 		if(!row){
-			return 1;
+			break;
 		}
 		int i = 0;
 		for(i = 0;i<row->nfields; ++i){
 			Cell cell = row->row[i];
 			printCell(&cell);
 		}
+		printf("%s %d %d",bc->dataSource->logfile,bc->dataSource->position,bc->dataSource->index);
+		printf(" %s %s",bc->currentTable->dbName,bc->currentTable->tableName);
 		printf("\n");
 	}
 	freeBinlogClient(bc);

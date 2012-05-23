@@ -12,7 +12,7 @@ typedef struct datasource_st{
 
 	/*Common fields of net and file*/
 	char *url;
-	const char *logfile;
+	char *logfile;
 	uint32_t position;
 	uint32_t index;
 	int serverid;

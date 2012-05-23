@@ -3,7 +3,7 @@
 #include "sha1.h"
 #include <string.h>
 int readPktHeader(PktHeader *header,int fd){
-	char buf[4];
+	char buf[4]={0};
 	int nread;
 	nread = anetRead(fd,buf,4);
 	if(nread==-1)return PROTO_ERR;
@@ -28,13 +28,17 @@ int readHandshakePkt(HandshakePkt *pkt,size_t len,int fd){
 	memcpy(pkt->salt,salt1,8);
 	pkt->saltlen = 8;
 	/*May be old protocol just ends here, see sql-common/client.c*/
-	if(vioTell(&io)>=len)
+	if(vioTell(&io)>=len){
+		free(buf);
 		return PROTO_OK; 
+	}
 
 	pkt->capacity = readUint16(&io);
 	/*new protocol support, with 16 bytes to describe server characteristics*/
-	if(vioTell(&io)+16>len)
-		return PROTO_OK;
+	if(vioTell(&io)+16>len){
+		free(buf);
+		return PROTO_OK; 
+	}
 	pkt->charset = readUint8(&io);
 	pkt->status = readUint16(&io);
 	uint32_t ucapacity = readUint16(&io);
@@ -61,6 +65,7 @@ int readHandshakePkt(HandshakePkt *pkt,size_t len,int fd){
 	}else{
 		pkt->pluginname = NULL;
 	}
+	free(buf);
 	return PROTO_OK;
 }
 void tryFreeHandshake(HandshakePkt *pkt){
@@ -126,6 +131,8 @@ int writeAuthPkt(const AuthPkt *pkt,size_t plen,int fd){
 	/*Now send the packet,send the header first*/
 	int nwrite;
 	nwrite = anetWrite(fd,buf,plen);
+
+	free(buf);
 	if(nwrite < plen) return PROTO_ERR;
 	return PROTO_OK;
 }
@@ -163,6 +170,7 @@ int readOkPkt(OkPkt *pkt,size_t plen,int fd){
 	pkt->status = readUint16(&io);
 	pkt->warnings =  readUint16(&io);
 	if(vioTell(&io)==plen) {
+		free(okbuf);
 		pkt->message = NULL;
 		return PROTO_OK;
 	}

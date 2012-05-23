@@ -65,8 +65,9 @@ static RowsEvent *getRowsEvent(BinlogClient *bc){
 		s->evLength = h->eventLength - 19; // notics ,we must set it!!! //TODO 19 should be instead by header length
 
 		if(h->typeCode==TABLE_MAP_EVENT){
-			if(tme!=NULL){
-				freeTableMapEvent(tme);
+			/*If this is not the first TABLE_MAP_EVENT then free the previous one*/
+			if(bc->currentTable!=NULL){
+				freeTableMapEvent(bc->currentTable);
 			}
 			tme = parseTableMapEvent(s,h);
 			if(tme==NULL){
@@ -74,23 +75,26 @@ static RowsEvent *getRowsEvent(BinlogClient *bc){
 				goto error;
 			}
 			bc->currentTable = tme;
+			bc->dataSource->position = tme->header->nextPosition - tme->header->eventLength;
+			bc->dataSource->index = 0;
 
 		}else if(h->typeCode==WRITE_ROWS_EVENT || h->typeCode==UPDATE_ROWS_EVENT || h->typeCode==DELETE_ROWS_EVENT){
 			if(tme == NULL){
 				goto error;
 			}
 			RowsEvent *re = parseRowsEvent(s,h,tme);
-			/*printf("------------------------\n");
-			printf("typeCode:%d\n",re->header->typeCode);
-			printf("eventLength:%d\n",re->header->eventLength);
-			printf("tableID:%lld\n",re->tableId);
-			printf("nfields:%d\n",re->nfields);
-			printf("rowsCount:%d\n",listLength(re->pairs));
-			printf("------------------------\n");*/
 			dsFreeEvent(bc->dataSource);
 			return re;
+		}else if(h->typeCode==ROTATE_EVENT){
+			RotateEvent *rotate =  parseRotateEvent(s,h);
+			if(bc->dataSource->logfile) free(bc->dataSource->logfile);//FIXME:what if logfile is on stack
+			bc->dataSource->logfile = strdup(rotate->fileName);
+			freeRotateEvent(rotate);
+		}else{
+			freeHeader(h);
 		}
 error:
+		/*ingore error*/
 		dsFreeEvent(bc->dataSource);
 		continue;
 	}
@@ -101,7 +105,6 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 	int nfields = bc->currentTable->nfields;
 	listIter *iter = listGetIterator(ev->pairs,AL_START_HEAD);
 	listNode *node = NULL;
-	bc->index = 0;
 	bc->_lenRows = listLength(ev->pairs);
 	bc->_rows = (BinlogRow *)malloc(bc->_lenRows * sizeof(BinlogRow));
 	int i = 0;
@@ -122,10 +125,11 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 		bc->_rows[i++] = row;
 		//printf("bc->rows[0] :%p,row:%p\n",&(bc->_rows[0]),&row);
 	}
+	free(iter);
 }
 static BinlogRow* fetchFromBuffer(BinlogClient *bc){
-	if(bc->index < bc->_lenRows){
-		return &(bc->_rows[bc->index]);
+	if(bc->dataSource->index < bc->_lenRows){
+		return &(bc->_rows[bc->dataSource->index]);
 	}else{
 		return NULL;
 	}
@@ -137,10 +141,24 @@ void freeBinlogRow(BinlogRow *br){
 	}
 }
 BinlogRow* fetchOne(BinlogClient *bc){
-	bc->index ++;
-	if(bc->index>= bc->_lenRows){
+	bc->dataSource->index ++;
+	if(bc->dataSource->index>= bc->_lenRows){
 		/*free rows buffer malloced last time*/
 		if(bc->_rows){
+			int i,j;
+			for(i=0;i < bc->_lenRows;++i){
+				int n = bc->_rows[i].nfields;
+				if(bc->_rows[i].row){
+					for(j=0;j<n;++j)
+						free(bc->_rows[i].row[j].value);
+					free(bc->_rows[i].row);
+				}
+				if(bc->_rows[i].rowOld){
+					for(j=0;j<n;++j)
+						free(bc->_rows[i].rowOld[j].value);
+					free(bc->_rows[i].row);
+				}
+			}
 			free(bc->_rows);
 		}
 		RowsEvent *re = getRowsEvent(bc);	
@@ -149,16 +167,17 @@ BinlogRow* fetchOne(BinlogClient *bc){
 			return NULL;
 		}
 		setRowsEventBuffer(bc,re);
+		freeRowsEvent(re);
 	}
 	return fetchFromBuffer(bc);
 }
 BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t index,int serverid){
 	BinlogClient *bc =(BinlogClient *)malloc(sizeof(BinlogClient));
 	bc->_rows=NULL;
+	bc->currentTable=NULL;
 	bc->_lenRows=0;
 
 	DataSource *ds = (DataSource*)malloc(sizeof(DataSource));
-	const char *fileName = NULL;
 	if(strncmp(url,"mysql",sizeof("mysql")-1) == 0){
 		dsInitWithMySQL(ds,url);
 	}
@@ -181,26 +200,24 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	LogBuffer *buffer = (LogBuffer*)malloc(sizeof(LogBuffer));
 	bc->logbuffer = buffer;
 
-	bc->currentTablePosition = position;
-	bc->index = index;
-	bc->fileName = (char*)fileName;
 	return bc;
 }
 
 void freeBinlogClient(BinlogClient *bc){
 	if(!bc)return;
-	if(bc->_rows){
-		free(bc->_rows);
-		bc->_rows = NULL;
-	}
 
 	if(bc->dataSource){
+		dsClose(bc->dataSource);
 		free(bc->dataSource);
 		bc->dataSource = NULL;
 	}
 	if(bc->logbuffer){
 		free(bc->logbuffer);
 		bc->logbuffer = NULL;
+	}
+	if(bc->currentTable){
+		freeTableMapEvent(bc->currentTable);
+		bc->currentTable=NULL;
 	}
 	free(bc);
 	bc = NULL;

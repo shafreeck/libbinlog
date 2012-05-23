@@ -56,6 +56,7 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 		mclose(mysql);
 		return 0;
 	}else{
+		tryFreeReply(&reply);
 		mysql->pnum = 0;
 		return 1;
 	}
@@ -107,10 +108,12 @@ int msaferead(MySQL *mysql,char *buf,size_t blen,char **newbuf){
 	readPktHeader(&header,fd);
 	//printf("msaferead:plen %d\n",header.plen);
 	//printf("msaferead:pnum %d\n",header.pnum);
+	
 	if(blen < header.plen && newbuf!=NULL){
 		*newbuf = malloc(header.plen) ;
 		nread = anetRead(fd,*newbuf,header.plen);
 	}else{
+		*newbuf = NULL;
 		nread = anetRead(fd,buf,header.plen);
 	}
 	if(nread==-1){
