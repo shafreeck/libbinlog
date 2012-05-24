@@ -116,6 +116,23 @@
 #define test(a)		((a) ? 1 : 0)
 #define likely(x)	__builtin_expect((x),1)
 
+#define mi_sint1korr(A) ((int8_t)(*A))
+#define mi_sint2korr(A) ((int16_t) (((int16_t) (((uint8_t*) (A))[1])) +\
+			((int16_t) ((int16_t) ((char*) (A))[0]) << 8)))
+#define mi_sint3korr(A) ((int32_t) (((((uint8_t*) (A))[0]) & 128) ? \
+			(((uint32_t) 255L << 24) | \
+			 (((uint32_t) ((uint8_t*) (A))[0]) << 16) |\
+			 (((uint32_t) ((uint8_t*) (A))[1]) << 8) | \
+			 ((uint32_t) ((uint8_t*) (A))[2])) : \
+			(((uint32_t) ((uint8_t*) (A))[0]) << 16) |\
+			(((uint32_t) ((uint8_t*) (A))[1]) << 8) | \
+			((uint32_t) ((uint8_t*) (A))[2])))
+#define mi_sint4korr(A) ((int32_t) (((int32_t) (((uint8_t*) (A))[3])) +\
+			((int32_t) (((uint8_t*) (A))[2]) << 8) +\
+			((int32_t) (((uint8_t*) (A))[1]) << 16) +\
+			((int32_t) ((int16_t) ((char*) (A))[0]) << 24)))
+#define mi_sint8korr(A) ((long long) mi_uint8korr(A))
+
 /*
   Internally decimal numbers are stored base 10^9 (see DIG_BASE below)
   So one variable of type decimal_digit_t is limited:
@@ -849,15 +866,15 @@ int bin2decimal(const uint8_t *from, decimal_t *to, int precision, int scale)
     dec1 UNINIT_VAR(x);
     switch (i)
     {
-      case 1: x=getInt8(from); break;
-      case 2: x=getInt16(from); break;
-      case 3: x=getInt24(from); break;
-      case 4: x=getInt32(from); break;
+      case 1: x=mi_sint1korr(from); break;
+      case 2: x=mi_sint2korr(from); break;
+      case 3: x=mi_sint3korr(from); break;
+      case 4: x=mi_sint4korr(from); break;
       default: DBUG_ASSERT(0);
     }
     from+=i;
     *buf=x ^ mask;
-    if (((unsigned long long)*buf) >= (unsigned long long ) powers10[intg0x+1])
+    if (((unsigned long long)*buf) >= (unsigned long long) powers10[intg0x+1])
       goto err;
     if (buf > to->buf || *buf != 0)
       buf++;
@@ -867,7 +884,7 @@ int bin2decimal(const uint8_t *from, decimal_t *to, int precision, int scale)
   for (stop=from+intg0*sizeof(dec1); from < stop; from+=sizeof(dec1))
   {
     DBUG_ASSERT(sizeof(dec1) == 4);
-    *buf=getInt32(from) ^ mask;
+    *buf=mi_sint4korr(from) ^ mask;
     if (((uint32_t)*buf) > DIG_MAX)
       goto err;
     if (buf > to->buf || *buf != 0)
@@ -879,7 +896,7 @@ int bin2decimal(const uint8_t *from, decimal_t *to, int precision, int scale)
   for (stop=from+frac0*sizeof(dec1); from < stop; from+=sizeof(dec1))
   {
     DBUG_ASSERT(sizeof(dec1) == 4);
-    *buf=getInt32(from) ^ mask;
+    *buf=mi_sint4korr(from) ^ mask;
     if (((uint32_t)*buf) > DIG_MAX)
       goto err;
     buf++;
@@ -890,10 +907,10 @@ int bin2decimal(const uint8_t *from, decimal_t *to, int precision, int scale)
     dec1 UNINIT_VAR(x);
     switch (i)
     {
-      case 1: x=getInt8(from); break;
-      case 2: x=getInt16(from); break;
-      case 3: x=getInt24(from); break;
-      case 4: x=getInt32(from); break;
+      case 1: x=mi_sint1korr(from); break;
+      case 2: x=mi_sint2korr(from); break;
+      case 3: x=mi_sint3korr(from); break;
+      case 4: x=mi_sint4korr(from); break;
       default: DBUG_ASSERT(0);
     }
     *buf=(x ^ mask) * powers10[DIG_PER_DEC1 - frac0x];
@@ -909,7 +926,6 @@ err:
   decimal_make_zero(((decimal_t*) to));
   return(E_DEC_BAD_NUM);
 }
-
 /*
   Returns the size of array to hold a decimal with given precision and scale
 

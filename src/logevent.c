@@ -511,18 +511,24 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 			{
 				uint8_t precision = meta>>8;
 				uint8_t decimals = meta & 0xFF;
-				uint32_t size = decimal_bin_size(precision,decimals);
+				uint32_t size = decimal_bin_size((int)precision,(int)decimals);
+				int32_t dbuf[128]; //actually , this is  big enough
 				decimal_t d;
-				bin2decimal(evcur->ev+evcur->cur,&d,precision,decimals);
+				d.buf=dbuf;
+				d.len=sizeof(dbuf)/sizeof(dbuf[0]);
+				int ret = bin2decimal(evcur->ev+evcur->cur,&d,precision,decimals);
+				if(ret!=E_DEC_OK){
+					return cell;
+				}
 				char buf[512] = {0};
-				int buflen = 512;
-				decimal2string(&d,buf,&buflen,precision,decimals,0);
+				int buflen = sizeof(buf);
+				decimal2string(&d,buf,&buflen,0,0,0);
+				buf[buflen]='\0';
 				cell.mtype = MYSQL_TYPE_NEWDECIMAL;
 				cell.ctype = STRING;
 				cell.value = strdup(buf);
 				cell.length = buflen;
 				evcur->cur += size;
-				cell.length = strlen(buf);
 			}
 
 		default:

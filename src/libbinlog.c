@@ -41,7 +41,7 @@ void printCell(Cell *cell){
 		case STRING:
 			{   
 				char *value =(char *) cell->value;
-				printf("%d:%s\t",cell->mtype,(char*)value);
+				printf("%s\t",(char*)value);
 				break;
 
 			}   
@@ -125,7 +125,7 @@ static BinlogRow* fetchFromBuffer(BinlogClient *bc){
 		return NULL;
 	}
 }
-// ****** public ******
+// ****** public interface ******
 void freeBinlogRow(BinlogRow *br){
 	if(!br)return;
 	int i;
@@ -156,8 +156,7 @@ BinlogRow* fetchOne(BinlogClient *bc){
 }
 BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t index,int serverid){
 	BinlogClient *bc =(BinlogClient *)malloc(sizeof(BinlogClient));
-	bc->_rows=NULL;
-	bc->_lenRows=0;
+	memset(bc,0,sizeof(BinlogClient));
 
 	DataSource *ds = (DataSource*)malloc(sizeof(DataSource));
 	if(strncmp(url,"mysql",sizeof("mysql")-1) == 0){

@@ -7,7 +7,7 @@
 #define getUint64(ev) (*(uint64_t*)(ev))
 #define getUint8(ev) (*(uint8_t*)(ev))
 #define getUint16(ev) (*(uint16_t*)(ev))
-#define getInt32(ev) (*(int32_t*)(ev))
+#define getInt32(ev) ((int32_t)(*(uint32_t*)(ev)))
 #define getInt64(ev) (*(int64_t*)(ev))
 #define getInt8(ev) (*(int8_t*)(ev))
 #define getInt16(ev) (*(int16_t*)(ev))
