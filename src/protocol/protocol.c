@@ -113,20 +113,27 @@ int writeAuthPkt(const AuthPkt *pkt,size_t plen,int fd){
 	char zero[23]={0};
 	vio io;
 	vioInitWithBuffer(&io,buf,plen);
-	writeBinary(&io,(const char*)pkt,9); // TODO,we should fix the byte order,here use LITTLE-ENDIN default
+	/*Write clientflags*/
+	writeBinary(&io,(const char*)&(pkt->clientflags),4);
+	/*Write max packet size*/
+	writeBinary(&io,(const char*)&(pkt->maxpkt),4);
+	/*Write charset number*/
+	writeBinary(&io,(const char*)&(pkt->charset),1);
 	/*Write the filled 0*/
 	writeBinary(&io,zero,23);
 	/*Write username ,include the '\0' */
 	writeBinary(&io,pkt->user,strlen(pkt->user)+1);
 
-	/*Write encoded salt len*/
+	/*Write encoded salt len,it is always 20,so the coded len is 1*/
 	writeBinary(&io,(const char *)&(pkt->saltlen),1);
-	if(pkt->saltlen)
-		writeBinary(&io,pkt->salt,20);
+	if(pkt->saltlen){
+		writeBinary(&io,pkt->salt,pkt->saltlen);
+	}
 
 	/*Write database*/
-	if(pkt->database)
+	if(pkt->database){
 		writeBinary(&io,pkt->database,strlen(pkt->database)+1);
+	}
 
 	/*Now send the packet,send the header first*/
 	int nwrite;

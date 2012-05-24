@@ -13,7 +13,7 @@ int16_t to_int16(void *value) { return *(int16_t*)value; }
 float to_float(void *value){return *(float *)value;}
 double to_double(void *value){return *(double *)value;}
 void printCell(Cell *cell){
-	switch(cell->cppType){
+	switch(cell->ctype){
 		case INT32:
 			printf("%d\t",to_int32(cell->value));
 			break;
@@ -21,10 +21,10 @@ void printCell(Cell *cell){
 			printf("%d\t",to_uint32(cell->value));
 			break;
 		case INT64:
-			printf("%lld\t",to_int64(cell->value));
+			printf("%ld\t",to_int64(cell->value));
 			break;
 		case UINT64:
-			printf("%llu\t",to_uint64(cell->value));
+			printf("%lu\t",to_uint64(cell->value));
 			break;
 		case INT8:
 			printf("%d",to_int8(cell->value));
@@ -41,7 +41,7 @@ void printCell(Cell *cell){
 		case STRING:
 			{   
 				char *value =(char *) cell->value;
-				printf("%d:%s\t",cell->mysqlType,(char*)value);
+				printf("%d:%s\t",cell->mtype,(char*)value);
 				break;
 
 			}   
@@ -168,6 +168,7 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	}
 	else{
 		snprintf(bc->errstr,BL_ERROR_SIZE,"%s","Unknow  datasource");
+		bc->err=1;
 		return bc;
 	}
 
@@ -175,7 +176,8 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	ds->index = index;
 	ds->serverid = serverid;
 	if(!dsConnect(ds)){
-		snprintf(bc->errstr,BL_ERROR_SIZE,"%s","Unknow  datasource");
+		snprintf(bc->errstr,BL_ERROR_SIZE,"%s",ds->errstr);
+		bc->err=1;
 		return bc;
 	}
 	bc->dataSource = ds;

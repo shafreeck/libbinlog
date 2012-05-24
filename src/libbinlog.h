@@ -20,6 +20,7 @@ typedef struct binlog_client_st{
 
 	Binlog binlog;
 	DataSource *dataSource;
+	int  err;
 	char errstr[BL_ERROR_SIZE];
 
 }BinlogClient;

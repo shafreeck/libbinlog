@@ -23,7 +23,9 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	AuthPkt auth;
 	memset(&auth,0,sizeof(auth));
 #define CLIENT_PROTOCOL_41 512;
-	auth.clientflags = CLIENT_PROTOCOL_41;
+	auth.clientflags = M_CLIENT_PROTOCOL_41;
+	auth.clientflags |= M_CLIENT_LONG_PASSWORD;
+	auth.clientflags |= M_CLIENT_SECURE_CONNECTION; /*Use new 4.1 authentication*/
 	auth.maxpkt = 1024*1024*16;
 	auth.charset=8;
 	if(user){

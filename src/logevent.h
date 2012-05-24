@@ -56,8 +56,8 @@ enum cpp_types {
 	BINARY
 };
 typedef struct cell_st{
-	int cppType;
-	int mysqlType;
+	int ctype;
+	int mtype;
 	int length;
 	void *value;
 }Cell;
