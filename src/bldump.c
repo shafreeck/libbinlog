@@ -13,7 +13,7 @@ int main(int argc,char *argv[]){
 	}
 	const char *url = argv[1];
 
-	BinlogClient *bc = connectDataSource(url,4,0,10);
+	BinlogClient *bc = connectDataSource(url,4,0,0);
 	if(!bc)return 1;
 	BinlogRow *row;
 	while(1){
@@ -32,6 +32,7 @@ int main(int argc,char *argv[]){
 		}
 		printf("%s %d %d",bc->dataSource->logfile,bc->dataSource->position,bc->dataSource->index);
 		printf("\n");
+		freeBinlogRow(row);
 	}
 	freeBinlogClient(bc);
 

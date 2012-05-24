@@ -61,8 +61,8 @@ typedef struct cell_st{
 	int length;
 	void *value;
 }Cell;
-
-typedef Cell* Row;
+typedef Cell* BlRow;
+void freeCell(Cell *c);
 typedef struct header_st{
 	uint32_t ts;
 	uint8_t type;
@@ -108,6 +108,7 @@ typedef struct eventcursor_st{
 /*Parse FormatDescriptionEvent and fill the struct Binlog*/
 int parseFDE(Binlog *bl,uint8_t *ev);
 int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
+void tblevFreeTableRes(TableEv *tblev);
 
 typedef struct rotate_event_st{
 	uint64_t position;
@@ -126,11 +127,11 @@ typedef struct rows_event_st{
 
 	uint32_t nfields; /*Count of fields*/
 	uint32_t nrows; /*Count of rows image*/
-	Row *rows;
-	Row *rowsold;
+	BlRow *rows;
+	BlRow *rowsold;
 
 }RowsEvent;
 int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev);
-void freeRowsEv(RowsEvent *rowsev);
+void rowsevFreeRows(RowsEvent *rowsev);
 #define getEventType(ev) ((uint8_t)(((uint8_t*)ev)[EVENT_TYPE_OFFSET]))
 #endif

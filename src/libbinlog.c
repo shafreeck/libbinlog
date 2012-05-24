@@ -86,24 +86,37 @@ static int getRowsEvent(BinlogClient *bc,RowsEvent *rev){
 	return 0;
 }
 static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
+	/*We are first Here,so malloc enough memory*/
+	if(bc->_rows==NULL && bc->_lenRows < ev->nrows){
+		bc->_rows = (BinlogRow *)malloc(ev->nrows * sizeof(BinlogRow));
+	}
+	/*If bc->_rows size is not enough , reallocate*/
+	if(bc->_rows && bc->_lenRows<ev->nrows){
+		/*Free rows array we allocated  last time*/
+		free(bc->_rows);
+		bc->_rows = (BinlogRow *)malloc(ev->nrows * sizeof(BinlogRow));
+	}
 	int nfields = ev->nfields;
 	bc->_lenRows = ev->nrows;
-	bc->_rows = (BinlogRow *)malloc(bc->_lenRows * sizeof(BinlogRow));
 	int i = 0;
 //	printf("bc->_lenRows is :%d\n",ev->nrows);
 	while(i < ev->nrows){
 		BinlogRow row;
 		row.nfields = nfields;
-		row.eventType = ev->type;
+		row.type = ev->type;
 		row.rowOld = NULL;
 		row.row = ev->rows[i];
-		if(row.eventType == UPDATE_ROWS_EVENT){
+		if(row.type == UPDATE_ROWS_EVENT){
 			row.rowOld = ev->rowsold[i];
 		}
 		bc->_rows[i++] = row;
 		//printf("bc->rows[0] :%p,row:%p\n",&(bc->_rows[0]),&row);
 	}
-	freeRowsEv(ev);
+	/*Free rows array here,for we copy all rows to bc->_rows[]*/
+	free(ev->rows);
+	if(ev->type==UPDATE_ROWS_EVENT){
+		free(ev->rowsold);
+	}
 }
 static BinlogRow* fetchFromBuffer(BinlogClient *bc){
 	if(bc->dataSource->index < bc->_lenRows){
@@ -114,31 +127,23 @@ static BinlogRow* fetchFromBuffer(BinlogClient *bc){
 }
 // ****** public ******
 void freeBinlogRow(BinlogRow *br){
-	if(br){
-		free(br);
+	if(!br)return;
+	int i;
+	for(i=0; i < br->nfields; ++i){
+		freeCell(&(br->row[i]));	
+		if(br->type==UPDATE_ROWS_EVENT){
+			freeCell(&(br->rowOld[i]));	
+		}
 	}
+	free(br->row);
+	if(br->type==UPDATE_ROWS_EVENT){
+		free(br->rowOld);
+	}
+
 }
 BinlogRow* fetchOne(BinlogClient *bc){
 	bc->dataSource->index ++;
 	if(bc->dataSource->index>= bc->_lenRows){
-		/*free rows buffer malloced last time*/
-		if(bc->_rows){
-			int i,j;
-			for(i=0;i < bc->_lenRows;++i){
-				int n = bc->_rows[i].nfields;
-				if(bc->_rows[i].row){
-					for(j=0;j<n;++j)
-						free(bc->_rows[i].row[j].value);
-					free(bc->_rows[i].row);
-				}
-				if(bc->_rows[i].rowOld){
-					for(j=0;j<n;++j)
-						free(bc->_rows[i].rowOld[j].value);
-					free(bc->_rows[i].row);
-				}
-			}
-			free(bc->_rows);
-		}
 		RowsEvent rowsev;
 		int ret = getRowsEvent(bc,&rowsev);	
 		if(ret == 0){
@@ -184,6 +189,10 @@ void freeBinlogClient(BinlogClient *bc){
 	if(bc->dataSource){
 		dsClose(bc->dataSource);
 		free(bc->dataSource);
+		bc->dataSource = NULL;
+	}
+	if(bc->_rows){
+		free(bc->_rows);
 		bc->dataSource = NULL;
 	}
 	free(bc);

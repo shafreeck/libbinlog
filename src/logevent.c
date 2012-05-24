@@ -632,6 +632,11 @@ int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
 	/*free nonused meta,we will use tbl->meta after*/
 	return 1;
 }
+void tblevFreeTableRes(TableEv *tblev){
+	free(tblev->meta);
+	free(tblev->types);
+	free(tblev->canbenull);
+}
 int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev){
 	uint32_t cur = bl->hdrlen;
 	rotate->position =  getUint64(ev+cur);
@@ -670,19 +675,19 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	int i,nrows=0;
 	Cell* cells,*cellsold;
 	int totalrows = 8;
-	Row *rows,*rowsold;
+	BlRow *rows,*rowsold;
 	rows = rowsold = NULL;
-	rows = malloc(sizeof(Row)*totalrows);
+	rows = malloc(sizeof(BlRow)*totalrows);
 	if(hdr.type==UPDATE_ROWS_EVENT)
-		rowsold = malloc(sizeof(Row)*totalrows);
+		rowsold = malloc(sizeof(BlRow)*totalrows);
 	EventCursor evcur;
 	evcur.ev = ev;
 	evcur.cur = cur;
 	while(evcur.cur < hdr.evlen){
 		if(nrows >= totalrows){
 			totalrows *= 2;
-			rows = realloc(rows,sizeof(Row)*totalrows);
-			rowsold = realloc(rows,sizeof(Row)*totalrows);
+			rows = realloc(rows,sizeof(BlRow)*totalrows);
+			rowsold = realloc(rows,sizeof(BlRow)*totalrows);
 		}
 		uint8_t *isnull = ev + evcur.cur;
 		evcur.cur += bitlen; 
@@ -719,22 +724,30 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	rev->nrows = nrows;
 	rev->nfields = nfields;
 	/*clean up Table map event malloced*/
-	free(bl->table.meta);
-	free(bl->table.types);
-	free(bl->table.canbenull);
+	tblevFreeTableRes(&(bl->table));
 	return 1;
 }
-void freeRowsEv(RowsEvent *rowsev){
-	int i;
-/*	for(i = 0;i < rowsev->nrows ; ++i){
+void rowsevFreeRows(RowsEvent *rowsev){
+	int i,j;
+	/*Free all rows*/
+	for(i = 0;i < rowsev->nrows ; ++i){
+		/*Free all cells's value*/
+		for(j = 0; j < rowsev->nfields;++j){
+			free(rowsev->rows[i][j].value);
+		}
 		free(rowsev->rows[i]);
-	}*/
+	}
 	free(rowsev->rows);
 	if(rowsev->type==UPDATE_ROWS_EVENT){
-	/*	for(i = 0;i < rowsev->nrows ; ++i){
+		for(i = 0;i < rowsev->nrows ; ++i){
+			for(j = 0; j < rowsev->nfields;++j){
+				free(rowsev->rowsold[i][j].value);
+			}
 			free(rowsev->rowsold[i]);
-		}*/
+		}
 		free(rowsev->rowsold);
-
 	}
+}
+void freeCell(Cell *c){
+	free(c->value);
 }
