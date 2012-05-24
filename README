@@ -24,3 +24,4 @@ void freeBinlogClient(BinlogClient *bc);
 2. decimal类型没有测试，可能会有问题
 
 3. mysql5.5* 没有测试。
+4. test git
