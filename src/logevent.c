@@ -719,7 +719,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 			isnull = ev + evcur.cur;
 			evcur.cur += bitlen; 
 			for(i = 0; i < nfields; ++i){
-				if(!isSet(isnull,i) && isSet(isused,i)){
+				if(!isSet(isnull,i) && isSet(isused_u,i)){
 					cellsold[i] = value2Cell(&evcur,bl->table.types[i],bl->table.meta[i]);
 				}else{
 					Cell c = {0};

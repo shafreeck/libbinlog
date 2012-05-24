@@ -6,4 +6,4 @@ all:$(all)
 bldump:bldump.o $(obj)
 
 clean:
-	rm $(all) $(obj)
+	rm -f $(all) $(obj) *.o
