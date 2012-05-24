@@ -13,7 +13,7 @@ int main(int argc,char *argv[]){
 	}
 	const char *url = argv[1];
 
-	BinlogClient *bc = connectDataSource(url,4,0,10);
+	BinlogClient *bc = connectDataSource(url,4,0,0);
 	if(!bc)return 1;
 	BinlogRow *row;
 	while(1){
