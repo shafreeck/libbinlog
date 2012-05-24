@@ -6,6 +6,7 @@
 #include "decimal.h"
 #include "logevent.h"
 #include "util.h"
+/*EventCousor reader*/
 static uint32_t readUint32(EventCursor *evcur){
 	uint32_t v = getUint32(evcur->ev+evcur->cur);
 	evcur->cur += 4;
@@ -26,7 +27,8 @@ static uint16_t readUint16(EventCursor *evcur){
 	evcur->cur += 2;
 	return v;
 }
-/*
+
+/*nonused  now ,anti warning
 static uint64_t readUint48(EventCursor *evcur){
 	uint64_t v = getUint48(evcur->ev + evcur->cur);
 	evcur->cur += 6;
@@ -63,6 +65,7 @@ static int32_t readInt24(EventCursor *evcur){
 	return v;
 }
 
+/*parse mysql coded length*/
 static uint64_t decodeint(uint8_t *ev ,uint32_t *cur){
 	uint8_t v = getInt8(ev);
 	*cur += 1;
@@ -73,11 +76,13 @@ static uint64_t decodeint(uint8_t *ev ,uint32_t *cur){
 	if(v == 254){ *cur += 8; return getUint64(ev + 1); }
 	return 0;
 }
+/*Check is set on 'idx' bit or not*/
 int isSet(uint8_t *bitmap,int idx){
 	int i = idx / 8;	
 	int j = idx % 8;
 	return (bitmap[i] >> j)& 0x01;
 }
+/*parse Table map event meta info,we change the variable len to fix 2 bytes*/
 static uint16_t* decodeMetadata(int nfields,uint8_t *types, int lenMetadata, uint8_t *metadata){
 	uint16_t *meta = (uint16_t*)malloc(nfields*sizeof(uint16_t));
 	int i;
@@ -132,7 +137,7 @@ static uint16_t* decodeMetadata(int nfields,uint8_t *types, int lenMetadata, uin
 	}
 	return meta;
 }
-
+/*Get a cell of one row in (UPDATE,WRITE,DELETE)Rows event*/
 Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 	Cell cell;
 	cell.value = NULL;
@@ -755,6 +760,7 @@ void rowsevFreeRows(RowsEvent *rowsev){
 		free(rowsev->rowsold);
 	}
 }
+/*Free the value of a cell*/
 void freeCell(Cell *c){
 	free(c->value);
 }

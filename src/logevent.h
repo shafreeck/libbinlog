@@ -12,7 +12,7 @@
 #define EVENT_LEN_OFFSET     9
 #define LOG_POS_OFFSET       13
 #define FLAGS_OFFSET         17
-enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
+enum bl_enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
 	MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,
 	MYSQL_TYPE_FLOAT,  MYSQL_TYPE_DOUBLE,
 	MYSQL_TYPE_NULL,   MYSQL_TYPE_TIMESTAMP,
@@ -33,7 +33,7 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
 	MYSQL_TYPE_GEOMETRY=255
 
 };
-enum log_event_type{
+enum bl_log_event_type{
 	UNKNOWN_EVENT= 0,
 	ROTATE_EVENT= 4,    
 	FORMAT_DESCRIPTION_EVENT= 15, 
@@ -43,7 +43,7 @@ enum log_event_type{
 	DELETE_ROWS_EVENT = 25, 
 	ENUM_END_EVENT = 28
 };
-enum cpp_types {
+enum bl_ctypes {
 	INT32,
 	INT8,
 	INT16,
@@ -55,6 +55,7 @@ enum cpp_types {
 	STRING,
 	BINARY
 };
+/*Cells structure,type,funcs ...*/
 typedef struct cell_st{
 	int ctype;
 	int mtype;
@@ -63,6 +64,14 @@ typedef struct cell_st{
 }Cell;
 typedef Cell* BlRow;
 void freeCell(Cell *c);
+/*Just be used in value2Cell now*/
+typedef struct eventcursor_st{
+	uint8_t *ev;
+	int cur;
+}EventCursor;
+
+
+/*Header about*/
 typedef struct header_st{
 	uint32_t ts;
 	uint8_t type;
@@ -73,6 +82,8 @@ typedef struct header_st{
 	uint8_t extralen;
 	char *extra;
 }Header;
+
+/*Fill this structure when parse Table map event*/
 typedef struct table_st{
 	uint32_t ts;/*timestamp of table map event*/
 	uint32_t serverid;
@@ -88,35 +99,18 @@ typedef struct table_st{
 	uint8_t *canbenull;
 	uint16_t *meta;
 }TableEv;
+
+/*Fill this structure when parse Format Description Event (FDE)*/
 typedef  struct binlog_st{
 	uint32_t blver;/*binlog version*/
 	uint8_t hdrlen;/*header length*/
 	uint32_t masterid;/*I think masterid is  the serverid of FDE*/
 	char server[50];/*server version*/
 	char posthdr[29];/*post header length of each type event,now we total have 29 events*/
-	char errstr[BL_ERROR_SIZE];
+	char errstr[BL_ERROR_SIZE];/*error message*/
 
 	TableEv table;
 }Binlog;
-
-int parseHeader(Binlog *bl,Header *header,uint8_t *ev);
-typedef struct eventcursor_st{
-	uint8_t *ev;
-	int cur;
-}EventCursor;
-
-/*Parse FormatDescriptionEvent and fill the struct Binlog*/
-int parseFDE(Binlog *bl,uint8_t *ev);
-int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
-void tblevFreeTableRes(TableEv *tblev);
-
-typedef struct rotate_event_st{
-	uint64_t position;
-	char fileName[256];/*Just accept 255 bytes of binlog name here*/
-
-}RotateEvent;
-int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev);
-
 typedef struct rows_event_st{
 	uint8_t type;
 	uint32_t ts;
@@ -131,7 +125,31 @@ typedef struct rows_event_st{
 	BlRow *rowsold;
 
 }RowsEvent;
+/*Rotate Event*/
+typedef struct rotate_event_st{
+	uint64_t position;
+	char fileName[256];/*Just accept 255 bytes of binlog name here*/
+
+}RotateEvent;
+
+
+/*Parse FormatDescriptionEvent and fill the struct Binlog*/
+int parseFDE(Binlog *bl,uint8_t *ev);
+/*parse event header*/
+int parseHeader(Binlog *bl,Header *header,uint8_t *ev);
+
+int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev);
+
+/*TableEv is a complex structure which includes pointers, we should free it if needed*/
+void tblevFreeTableRes(TableEv *tblev);
+
+int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev);
+
 int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev);
+/*RowsEvent is a complex structure contains pointers,we should free it if needed*/
 void rowsevFreeRows(RowsEvent *rowsev);
+
+/*A util function to get event type on hand*/
 #define getEventType(ev) ((uint8_t)(((uint8_t*)ev)[EVENT_TYPE_OFFSET]))
+
 #endif
