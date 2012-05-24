@@ -15,6 +15,14 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	mysql->pnum = header.pnum;
 	HandshakePkt handshake;
 	readHandshakePkt(&handshake,header.plen,fd);
+	if(!(handshake.capacity&M_CLIENT_PROTOCOL_41)){
+		sprintf(mysql->errstr,"Imcompatible protocol,we use CLIENT_PROTOCOL_41");
+		return 0;
+	}
+	if(handshake.protover!=10){
+		sprintf(mysql->errstr,"Unsupport protocol version %d",handshake.protover);
+		return 0;
+	}
 	mysql->scapacity = handshake.capacity;
 	mysql->status = handshake.status;
 
@@ -22,16 +30,16 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	mysql->pnum += 1;
 	AuthPkt auth;
 	memset(&auth,0,sizeof(auth));
-#define CLIENT_PROTOCOL_41 512;
 	auth.clientflags = M_CLIENT_PROTOCOL_41;
 	auth.clientflags |= M_CLIENT_LONG_PASSWORD;
 	auth.clientflags |= M_CLIENT_SECURE_CONNECTION; /*Use new 4.1 authentication*/
-	auth.maxpkt = 1024*1024*16;
+	auth.maxpkt = M_MAX_PACKET_SIZE;
 	auth.charset=8;
 	if(user){
 		auth.user = (char*)user;
 	}
-	if(db){
+	if(db && handshake.capacity & M_CLIENT_CONNECT_WITH_DB){
+		auth.clientflags |= M_CLIENT_CONNECT_WITH_DB;
 		auth.database = (char*)db;
 	}
 	auth.saltlen=0;

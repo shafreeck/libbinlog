@@ -24,6 +24,7 @@ int minsert(MySQL *mysql,const char *sqlfmt,...);
 int mdelete(MySQL *mysql,const char *sqlfmt,...);
 int mupdate(MySQL *mysql,const char *sqlfmt,...);
 */
+#define M_MAX_PACKET_SIZE 1024*1024*16
 
 /*copied from include/mysql_com.h*/
 enum _mservercmd {
