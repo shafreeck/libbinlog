@@ -99,7 +99,7 @@ static int connectMySQL(DataSource *ds){
 	memcpy(args+10,ds->logfile,slen);
 	argslen = 10 + slen;
 	/*Send the COM_BINLOG_DUMP command*/
-	if(!msendcmd(mysql,0x12,args,argslen)){
+	if(!msendcmd(mysql,COM_BINLOG_DUMP,args,argslen)){
 		snprintf(ds->errstr,BL_ERROR_SIZE,"%s",mysql->errstr);	
 		return 0;
 	}
