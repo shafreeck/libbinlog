@@ -14,14 +14,10 @@ int main(int argc,char *argv[]){
 	const char *url = argv[1];
 
 	BinlogClient *bc = connectDataSource(url,4,0,0);
-<<<<<<< HEAD
-	if(!bc)return 1;
-=======
 	if(bc->err){
 		printf("%s\n",bc->errstr);
 		return 1;
 	}
->>>>>>> 994fd377a74c782a81aab40141cf76526ec3e526
 	BinlogRow *row;
 	while((row = fetchOne(bc))){
 		if(row->type==WRITE_ROWS_EVENT){
