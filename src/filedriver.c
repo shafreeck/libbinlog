@@ -77,7 +77,7 @@ static DataSource dsFile={
 	closeFile,
 	getEventFromFile,
 	freeEventFromFile,
-	NULL,NULL,
+	NULL,{0},
 	4, 0,-1,
 	{{0}}
 };
@@ -88,6 +88,7 @@ void parseFileUrl(DataSource *ds,const char *surl){
 	int s_path,s_file;
 	s_path = s_file = 1;
 	char next = ':';
+	char *logfile;
 	while(*++url!='\0'){
 		if(*url ==next){
 			url += 3;
@@ -98,13 +99,15 @@ void parseFileUrl(DataSource *ds,const char *surl){
 				continue;
 			}
 			if(s_file){
-				ds->logfile = url;
+				logfile = url;
 			}
 		}
 	}
 	if(!ds->driver.file.path){
-		ds->driver.file.path = ds->logfile;
+		ds->driver.file.path = logfile;
 	}
+	if(logfile && strlen(logfile)<256)
+		strcpy(ds->logfile,logfile);
 }
 void dsInitWithFile(DataSource *ds,const char* url){
 	*ds  = dsFile;

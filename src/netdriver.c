@@ -22,6 +22,7 @@ static void parseMySQLUrl(DataSource *ds,const char *surl){
 
 	char *url = strdup(surl);
 	ds->url = url;
+	char *logfile;
 
 	port = NULL;
 	if(url[0]=='m'){/*mysql url*/
@@ -64,7 +65,7 @@ static void parseMySQLUrl(DataSource *ds,const char *surl){
 					s_port = 0;
 					s_file = 0;
 					*url='\0';
-					ds->logfile = url+1;	
+					logfile = url+1;	
 					done++;
 					continue;
 				}
@@ -79,6 +80,8 @@ static void parseMySQLUrl(DataSource *ds,const char *surl){
 	}
 	if(port)
 		ds->driver.net.port = atoi(port);
+	if(logfile && strlen(logfile)<256)
+		strcpy(ds->logfile,logfile);
 }
 static int connectMySQL(DataSource *ds){
 	MySQL *mysql  = &(ds->driver.net.mysql);
@@ -96,7 +99,7 @@ static int connectMySQL(DataSource *ds){
 	memcpy(args+10,ds->logfile,slen);
 	argslen = 10 + slen;
 	/*Send the COM_BINLOG_DUMP command*/
-	if(!msendcmd(mysql,0x12,args,argslen)){
+	if(!msendcmd(mysql,COM_BINLOG_DUMP,args,argslen)){
 		snprintf(ds->errstr,BL_ERROR_SIZE,"%s",mysql->errstr);	
 		return 0;
 	}
@@ -124,7 +127,7 @@ static unsigned char *getEventFromServer(DataSource *ds){
 		buf = ds->driver.net.newbuf;
 	}
 	/*Check the EOF packet*/
-	if(nread < 8 && buf[0]==254){
+	if(nread < 8 &&(uint8_t) (buf[0])==254){
 		snprintf(ds->errstr,BL_ERROR_SIZE,"%s",mysql->errstr);
 		return NULL;
 	}
@@ -140,8 +143,8 @@ static DataSource dsMySQL = {
 	closeMySQL,
 	getEventFromServer,
 	freeEventFromServer,
-	NULL,NULL,
-	4, 0,0,
+	NULL,{0},
+	4,0,0,
 	{{0}},
 };
 void dsInitWithMySQL(DataSource *ds,const char*url){
