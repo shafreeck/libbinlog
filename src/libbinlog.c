@@ -4,39 +4,31 @@
 #include <stdio.h>
 #include <string.h>
 
-int32_t to_int32(void *value) { return *(int32_t*)value ;}
-uint32_t to_uint32(void *value) { return *(uint32_t*)value; }
-int64_t to_int64(void *value) { return *(int64_t*)value ;}
-uint64_t to_uint64(void *value) { return *(uint64_t*)value; }
-int8_t to_int8(void *value) { return *(int8_t*)value; }
-int16_t to_int16(void *value) { return *(int16_t*)value; }
-float to_float(void *value){return *(float *)value;}
-double to_double(void *value){return *(double *)value;}
 void printCell(Cell *cell){
 	switch(cell->ctype){
 		case INT32:
-			printf("%d\t",to_int32(cell->value));
+			printf("%d\t",getInt32(cell->value));
 			break;
 		case UINT32:
-			printf("%d\t",to_uint32(cell->value));
+			printf("%d\t",getUint32(cell->value));
 			break;
 		case INT64:
-			printf("%ld\t",to_int64(cell->value));
+			printf("%ld\t",getInt64(cell->value));
 			break;
 		case UINT64:
-			printf("%lu\t",to_uint64(cell->value));
+			printf("%lu\t",getUint64(cell->value));
 			break;
 		case INT8:
-			printf("%d",to_int8(cell->value));
+			printf("%d",getInt8(cell->value));
 			break;
 		case INT16:
-			printf("%d",to_int16(cell->value));
+			printf("%d",getInt16(cell->value));
 			break;
 		case FLOAT:
-			printf("%f\t",to_float(cell->value));
+			printf("%f\t",getFloat(cell->value));
 			break;
 		case DOUBLE:
-			printf("%f\t",to_double(cell->value));
+			printf("%f\t",getDouble(cell->value));
 			break;
 		case STRING:
 			{   
