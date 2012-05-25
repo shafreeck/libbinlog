@@ -1,8 +1,7 @@
-#ifndef __LOGEVENT_H
-#define __LOGEVENT_H
+#ifndef BL_LOGEVENT_H
+#define BL_LOGEVENT_H
 #include <stdint.h>
 #include "constant.h"
-#include "util.h"
 
 #define LOG_EVENT_HEADER_LEN 19     /* the fixed header length */
 

@@ -1,6 +1,6 @@
 /*util functions*/
-#ifndef __UTIL_H
-#define __UTIL_H
+#ifndef BL_UTIL_H
+#define BL_UTIL_H
 
 #include <stdint.h>
 #define getUint32(ev) (*(uint32_t*)(ev))

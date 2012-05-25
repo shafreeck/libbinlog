@@ -1,5 +1,5 @@
-#ifndef __LIBBINLOG__H
-#define __LIBBINLOG__H
+#ifndef BL_LIBBINLOG__H
+#define BL_LIBBINLOG__H
 #include "logevent.h"
 #include "constant.h"
 #include "datasource.h"

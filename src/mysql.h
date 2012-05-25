@@ -1,5 +1,5 @@
-#ifndef LIBBINLOG_MYSQL_H
-#define LIBBINLOG_MYSQL_H
+#ifndef M_MYSQL_H
+#define M_MYSQL_H
 #include <stdint.h>
 #include <stdlib.h>
 typedef struct _mysql{
@@ -7,6 +7,7 @@ typedef struct _mysql{
 	uint32_t scapacity;/*server capacity*/
 	uint32_t ccapacity;/*client capacity*/
 	uint32_t threadid;
+	uint32_t maxpkt;
 	uint16_t status;
 	uint8_t charset;
 	uint8_t pnum; /*Packet number of a talk*/

@@ -1,5 +1,5 @@
-#ifndef LIBBINLOG_BINARY_H
-#define LIBBINLOG_BINARY_H
+#ifndef M_BINARY_H
+#define M_BINARY_H
 #include "vio.h"
 #include <stdint.h>
 #include <assert.h>

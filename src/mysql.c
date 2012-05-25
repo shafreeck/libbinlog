@@ -34,7 +34,10 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	auth.clientflags |= M_CLIENT_LONG_PASSWORD;
 	auth.clientflags |= M_CLIENT_SECURE_CONNECTION; /*Use new 4.1 authentication*/
 	auth.maxpkt = M_MAX_PACKET_SIZE;
-	auth.charset=8;
+	auth.charset=handshake.charset;
+	mysql->maxpkt = auth.maxpkt;
+	mysql->ccapacity = auth.clientflags;
+
 	if(user){
 		auth.user = (char*)user;
 	}

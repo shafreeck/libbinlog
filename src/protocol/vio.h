@@ -1,8 +1,8 @@
 /*
  *An IO implements like redis's rio
  **/
-#ifndef LIBBINLOG_VIO_H
-#define LIBBINLOG_VIO_H
+#ifndef M_VIO_H
+#define M_VIO_H
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>

@@ -1,5 +1,5 @@
-#ifndef LIBBINLOG_PROTOCOL_H
-#define LIBBINLOG_PROTOCOL_H
+#ifndef M_PROTOCOL_H
+#define M_PROTOCOL_H
 #include "binary.h"
 
 enum Status{
