@@ -18,6 +18,7 @@ typedef struct binlog_client_st{
 	int _lenRows;
 	//end private
 
+	/*public member*/
 	Binlog binlog;
 	DataSource *dataSource;
 	int  err;
@@ -25,10 +26,37 @@ typedef struct binlog_client_st{
 
 }BinlogClient;
 
+/*Connect to datasource which can be mysql server and local file
+ * Param:
+ *  url: mysql://user:password@host:port/binlog or file://path-to-binlog
+ *  position: start position
+ *  index: index number of position
+ *  serverid: serverid of this slave , only works for mysql server
+ * Return:
+ *  BinlogClient pointer ,which impossible be NULL, check BinlogClient->err for error
+ * */
 BinlogClient *connectDataSource(const char*url,uint32_t position,uint32_t index,int serverId);
-BinlogRow* fetchOne(BinlogClient *bc);
-void freeBinlogRow(BinlogRow *row);
-void freeBinlogClient(BinlogClient *bc);
 
+/*Fetch one row from binlog. It can be inserted ,deleted  or updated
+ * Param:
+ *  BinlogClient ptr: binlog parser context
+ * Return:
+ *  BinlogRow ptr: One row from binlog.
+ * */
+BinlogRow* fetchOne(BinlogClient *bc);
+/*Free BinlogRow we just fetched
+ * Param:
+ *  BinlogRow ptr
+ * */
+void freeBinlogRow(BinlogRow *row);
+/*Free libbinlog context
+ * Param:
+ *  BinlogClient ptr
+ * */
+void freeBinlogClient(BinlogClient *bc);
+/*Print a Cell of a row
+ * Param:
+ *  Cell ptr: A Cell is a field of one row ,see logevent.h
+ * */
 void printCell(Cell *cell);
 #endif
