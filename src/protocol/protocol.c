@@ -49,7 +49,8 @@ int readHandshakePkt(HandshakePkt *pkt,size_t len,int fd){
 	readBinary(&io,salt2,10);
 	if(saltlen>pkt->saltlen){
 		/*plus 1 for '\0'*/
-		saltleft = saltlen - pkt->saltlen + 1; 
+	//	saltleft = saltlen - pkt->saltlen + 1;  /*Ignore this,mysql5.5 saltlen=21 ,but this looks like useless*/
+		saltleft = 13;
 	}
 	else{
 		saltleft = 13;
