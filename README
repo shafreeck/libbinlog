@@ -2,9 +2,6 @@ libbinlog
 
 A library to parse mysql binary log
 
-TODO:
-decimal
-
 特性：
 1. 自己实现的mysql通信协议（不依赖libmysqlclient）
 2. 提供简单易用的API
