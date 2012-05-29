@@ -45,19 +45,21 @@ int readHandshakePkt(HandshakePkt *pkt,size_t len,int fd){
 	pkt->capacity |= ucapacity << 16;
 	/*saltlen is always 0 up to 5.1, mysql 5.5 use this field with real length */
 	saltlen = readUint8(&io);
+	(void)saltlen; //anti-waring not-used
 	/*10 0x00 bytes ,temp use salt2*/
 	readBinary(&io,salt2,10);
-	if(saltlen>pkt->saltlen){
-		/*plus 1 for '\0'*/
-		saltleft = saltlen - pkt->saltlen + 1; 
+	/*if(saltlen>pkt->saltlen){
+		//plus 1 for '\0'
+		saltleft = saltlen - pkt->saltlen; 
 	}
 	else{
-		saltleft = 13;
-	}
+		saltleft = 12;
+	}*///I down know why this does not work for mysql5.5 ,saltlen is useless
+	saltleft = 12;
 	readBinary(&io,salt2,saltleft);
 	memcpy(pkt->salt + pkt->saltlen,salt2,saltleft);
 	/*ignore the '\0'*/
-	pkt->saltlen += saltleft - 1 ;
+	pkt->saltlen += saltleft ;
 
 	/*mysql 5.5* support , with plugin name (NULL-terminated)*/
 	if(vioTell(&io) < len){
