@@ -90,40 +90,40 @@ static uint16_t* decodeMetadata(int nfields,uint8_t *types, int lenMetadata, uin
 	for(i=0;i<nfields;++i){
 		uint8_t type = types[i];
 		switch(type){
-			case MYSQL_TYPE_TINY_BLOB:
-			case MYSQL_TYPE_BLOB:
-			case MYSQL_TYPE_MEDIUM_BLOB:
-			case MYSQL_TYPE_LONG_BLOB:
-			case MYSQL_TYPE_DOUBLE:
-			case MYSQL_TYPE_FLOAT:
-			case MYSQL_TYPE_GEOMETRY:
+			case BL_MYSQL_TYPE_TINY_BLOB:
+			case BL_MYSQL_TYPE_BLOB:
+			case BL_MYSQL_TYPE_MEDIUM_BLOB:
+			case BL_MYSQL_TYPE_LONG_BLOB:
+			case BL_MYSQL_TYPE_DOUBLE:
+			case BL_MYSQL_TYPE_FLOAT:
+			case BL_MYSQL_TYPE_GEOMETRY:
 				meta[i] = metadata[index];
 				index++;
 				break;
-			case MYSQL_TYPE_SET:
-			case MYSQL_TYPE_ENUM:
-			case MYSQL_TYPE_STRING:
+			case BL_MYSQL_TYPE_SET:
+			case BL_MYSQL_TYPE_ENUM:
+			case BL_MYSQL_TYPE_STRING:
 				{
 					uint16_t x = (metadata[index++] << 8U); // real_type
 					x+= metadata[index++];            // pack or field length
 					meta[i]= x;
 					break;
 				}
-			case MYSQL_TYPE_BIT:
+			case BL_MYSQL_TYPE_BIT:
 				{
 					uint16_t x= metadata[index++]; 
 					x = x + (metadata[index++] << 8U);
 					meta[i]= x;
 					break;
 				}
-			case MYSQL_TYPE_VARCHAR:
+			case BL_MYSQL_TYPE_VARCHAR:
 				{
 					char *ptr= (char *)&metadata[index];
 					meta[i]= getUint16(ptr);
 					index= index + 2;
 					break;
 				}
-			case MYSQL_TYPE_NEWDECIMAL:
+			case BL_MYSQL_TYPE_NEWDECIMAL:
 				{
 					uint16_t x= metadata[index++] << 8U; // precision
 					x+= metadata[index++];            // decimals
@@ -145,7 +145,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 	cell.ctype = cell.mtype = 0; 
 
 	uint32_t nLength= 0;
-	if (type == MYSQL_TYPE_STRING){
+	if (type == BL_MYSQL_TYPE_STRING){
 		if (meta >= 256){
 			uint8_t byte0= meta >> 8;
 			uint8_t byte1= meta & 0xFF;
@@ -158,9 +158,9 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				nLength = meta & 0xFF;
 			}
 			switch(byte0){
-				case MYSQL_TYPE_SET:
-				case MYSQL_TYPE_ENUM:
-				case MYSQL_TYPE_STRING:
+				case BL_MYSQL_TYPE_SET:
+				case BL_MYSQL_TYPE_ENUM:
+				case BL_MYSQL_TYPE_STRING:
 					type= byte0;
 					nLength= byte1;
 					break;
@@ -171,10 +171,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 		}
 	}
 	switch(type){
-		case MYSQL_TYPE_LONG: //int32
+		case BL_MYSQL_TYPE_LONG: //int32
 			{
 
-				cell.mtype = MYSQL_TYPE_LONG;
+				cell.mtype = BL_MYSQL_TYPE_LONG;
 				cell.ctype = INT32;
 
 				uint32_t v = readInt32(evcur);
@@ -186,10 +186,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				cell.length = sizeof(int32_t);
 				break;
 			}
-		case MYSQL_TYPE_TINY:
+		case BL_MYSQL_TYPE_TINY:
 			{
 				int8_t v = readInt8(evcur);
-				cell.mtype = MYSQL_TYPE_TINY;
+				cell.mtype = BL_MYSQL_TYPE_TINY;
 				cell.ctype = INT8;
 
 				void *value = malloc(sizeof(int8_t));
@@ -198,10 +198,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				cell.length = sizeof(int8_t);
 				break;
 			}
-		case MYSQL_TYPE_SHORT:
+		case BL_MYSQL_TYPE_SHORT:
 			{
 				int16_t v = readInt16(evcur);
-				cell.mtype = MYSQL_TYPE_SHORT;
+				cell.mtype = BL_MYSQL_TYPE_SHORT;
 				cell.ctype = INT16;
 				void *value = malloc(sizeof(int16_t));
 				*(int16_t*)value = v;
@@ -209,11 +209,11 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				cell.length = sizeof(int16_t);
 				break;
 			}
-		case MYSQL_TYPE_LONGLONG:
+		case BL_MYSQL_TYPE_LONGLONG:
 			{
 				int64_t v = readInt64(evcur);
 
-				cell.mtype = MYSQL_TYPE_LONGLONG;
+				cell.mtype = BL_MYSQL_TYPE_LONGLONG;
 				cell.ctype = UINT64;
 				void *value = malloc(sizeof(int64_t));
 				*(int64_t *)value = v;
@@ -222,10 +222,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				break;
 
 			}
-		case MYSQL_TYPE_INT24:
+		case BL_MYSQL_TYPE_INT24:
 			{
 				int32_t v = readInt24(evcur);
-				cell.mtype = MYSQL_TYPE_INT24;
+				cell.mtype = BL_MYSQL_TYPE_INT24;
 				cell.ctype = INT32;
 				void *value = malloc(sizeof(int32_t));
 				*(int32_t *)value = v;
@@ -233,10 +233,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				cell.length = sizeof(int32_t);
 				break;
 			}
-		case MYSQL_TYPE_TIMESTAMP:
+		case BL_MYSQL_TYPE_TIMESTAMP:
 			{
 				uint32_t v = readUint32(evcur);
-				cell.mtype = MYSQL_TYPE_TIMESTAMP;
+				cell.mtype = BL_MYSQL_TYPE_TIMESTAMP;
 				cell.ctype = UINT32;
 				void *value = malloc(sizeof(int32_t));
 				*(int32_t *)value = v;
@@ -244,7 +244,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				cell.length = sizeof(int32_t);
 				break;
 			}
-		case MYSQL_TYPE_DATETIME:
+		case BL_MYSQL_TYPE_DATETIME:
 			{
 				uint64_t v = readUint64(evcur);
 				char szDateTime[128] = {0};
@@ -254,27 +254,27 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 						d / 10000, (d % 10000) / 100, d % 100,
 						t / 10000, (t % 10000) / 100, t % 100);
 
-				cell.mtype = MYSQL_TYPE_DATETIME;
+				cell.mtype = BL_MYSQL_TYPE_DATETIME;
 				cell.ctype = STRING;
 				cell.value = strdup(szDateTime); // copy '\0' for STRING type
 				cell.length = strlen(szDateTime);
 				break;
 			}
 
-		case MYSQL_TYPE_TIME:
+		case BL_MYSQL_TYPE_TIME:
 			{
 				uint32_t v= readUint24(evcur);
 				char szTime[128] = {0};
 				sprintf(szTime, "'%02d:%02d:%02d'",
 						v / 10000, (v % 10000) / 100, v % 100);
-				cell.mtype = MYSQL_TYPE_TIME;
+				cell.mtype = BL_MYSQL_TYPE_TIME;
 				cell.ctype = STRING;
 				cell.value = strdup(szTime);
 				cell.length = strlen(szTime);
 				break;
 			}
 
-		case MYSQL_TYPE_NEWDATE:
+		case BL_MYSQL_TYPE_NEWDATE:
 			{
 				uint32_t tmp= readUint24(evcur);
 				int part;
@@ -300,42 +300,42 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				char szNewDate[128] = {0};
 				sprintf(szNewDate,"%s",buf);
 
-				cell.mtype = MYSQL_TYPE_NEWDATE;
+				cell.mtype = BL_MYSQL_TYPE_NEWDATE;
 				cell.ctype = STRING;
 				cell.value = strdup(szNewDate);
 				cell.length = strlen(szNewDate);
 				break;
 			}
 
-		case MYSQL_TYPE_DATE:
+		case BL_MYSQL_TYPE_DATE:
 			{
 				uint32_t v= readUint24(evcur);
 
 				char szDate[128] = {0};
 				sprintf(szDate,"%04ld-%02ld-%02ld",
 						(v / (16L * 32L)), (v / 32L % 16L), (v % 32L));
-				cell.mtype = MYSQL_TYPE_DATE;
+				cell.mtype = BL_MYSQL_TYPE_DATE;
 				cell.ctype = STRING;
 				cell.value = strdup(szDate);
 				cell.length = strlen(szDate);
 				break;
 			}
 
-		case MYSQL_TYPE_YEAR:
+		case BL_MYSQL_TYPE_YEAR:
 			{
 				uint32_t v = readUint8(evcur);
 				char szYear[8];
 				sprintf(szYear, "%04d", v+ 1900);
-				cell.mtype = MYSQL_TYPE_YEAR;
+				cell.mtype = BL_MYSQL_TYPE_YEAR;
 				cell.ctype = STRING;
 				cell.value = strdup(szYear);
 				cell.length = strlen(szYear);
 				break;
 			}
 
-		case MYSQL_TYPE_ENUM:
+		case BL_MYSQL_TYPE_ENUM:
 			{
-				cell.mtype =  MYSQL_TYPE_ENUM;
+				cell.mtype =  BL_MYSQL_TYPE_ENUM;
 				cell.ctype = INT32;
 				switch (meta & 0xFF) {
 					case 1:
@@ -362,20 +362,20 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				break;
 			}
 
-		case MYSQL_TYPE_SET:
+		case BL_MYSQL_TYPE_SET:
 			{
 				char *szBuf =(char *) malloc(32);
 				memcpy(szBuf,evcur->ev,meta & 0xFF);
 				//*pPos += meta & 0xFF;
-				cell.mtype = MYSQL_TYPE_SET;
+				cell.mtype = BL_MYSQL_TYPE_SET;
 				cell.ctype = BINARY;
 				cell.value = szBuf;
 				cell.length = meta & 0xFF;
 				evcur->cur += meta & 0xFF;
 				break;
 			}
-		case MYSQL_TYPE_BLOB:
-			cell.mtype = MYSQL_TYPE_BLOB;
+		case BL_MYSQL_TYPE_BLOB:
+			cell.mtype = BL_MYSQL_TYPE_BLOB;
 			cell.ctype = BINARY;
 			switch (meta) {
 				case 1:     //TINYBLOB/TINYTEXT
@@ -425,10 +425,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 			}
 			break;
 
-		case MYSQL_TYPE_VARCHAR:
-		case MYSQL_TYPE_VAR_STRING:
+		case BL_MYSQL_TYPE_VARCHAR:
+		case BL_MYSQL_TYPE_VAR_STRING:
 			{
-				cell.mtype = MYSQL_TYPE_VARCHAR;
+				cell.mtype = BL_MYSQL_TYPE_VARCHAR;
 				cell.ctype = STRING; // can we store binary into VARCHAR ?
 				nLength = meta;
 				if (nLength < 256){
@@ -451,9 +451,9 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				break;
 			}
 
-		case MYSQL_TYPE_STRING:
+		case BL_MYSQL_TYPE_STRING:
 			{
-				cell.mtype = MYSQL_TYPE_STRING;
+				cell.mtype = BL_MYSQL_TYPE_STRING;
 				cell.ctype = STRING;
 				if (nLength < 256){
 					nLength = readUint8(evcur);
@@ -476,10 +476,10 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 
 			}
 
-		case MYSQL_TYPE_BIT:
+		case BL_MYSQL_TYPE_BIT:
 			{
 				cell.ctype = BINARY;
-				cell.mtype = MYSQL_TYPE_BIT;
+				cell.mtype = BL_MYSQL_TYPE_BIT;
 				uint32_t nBits= ((meta >> 8) * 8) + (meta & 0xFF);
 				nLength= (nBits + 7) / 8;
 				void *value = malloc(nLength);
@@ -489,9 +489,9 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				evcur->cur += nLength;
 				break;
 			}   
-		case MYSQL_TYPE_FLOAT:
+		case BL_MYSQL_TYPE_FLOAT:
 			{
-				cell.mtype = MYSQL_TYPE_FLOAT;
+				cell.mtype = BL_MYSQL_TYPE_FLOAT;
 				cell.ctype = FLOAT;
 				void *value = malloc(sizeof(float));
 				memcpy((char *)value,evcur->ev+evcur->cur, sizeof(float) );
@@ -500,9 +500,9 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				evcur->cur += sizeof(float);
 				break;
 			}   
-		case MYSQL_TYPE_DOUBLE:
+		case BL_MYSQL_TYPE_DOUBLE:
 			{
-				cell.mtype = MYSQL_TYPE_DOUBLE;
+				cell.mtype = BL_MYSQL_TYPE_DOUBLE;
 				cell.ctype = DOUBLE;
 				void *value = malloc(sizeof(double));
 				memcpy((char *)value,evcur->ev+evcur->cur, sizeof(double) );
@@ -512,7 +512,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				break;
 
 			}
-		case MYSQL_TYPE_NEWDECIMAL:// FIXME : check this type
+		case BL_MYSQL_TYPE_NEWDECIMAL:// FIXME : check this type
 			{
 				uint8_t precision = meta>>8;
 				uint8_t decimals = meta & 0xFF;
@@ -529,7 +529,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				int buflen = sizeof(buf);
 				decimal2string(&d,buf,&buflen,0,0,0);
 				buf[buflen]='\0';
-				cell.mtype = MYSQL_TYPE_NEWDECIMAL;
+				cell.mtype = BL_MYSQL_TYPE_NEWDECIMAL;
 				cell.ctype = STRING;
 				cell.value = strdup(buf);
 				cell.length = buflen;
@@ -679,7 +679,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	uint8_t *isused = ev+cur,*isused_u=NULL;
 	int bitlen = (int) (nfields+7)/8;
 	cur += bitlen;
-	if(hdr.type==UPDATE_ROWS_EVENT){
+	if(hdr.type==BL_UPDATE_ROWS_EVENT){
 		isused_u = ev+cur;
 		cur += bitlen; 
 	}
@@ -690,7 +690,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	BlRow *rows,*rowsold;
 	rows = rowsold = NULL;
 	rows = malloc(sizeof(BlRow)*totalrows);
-	if(hdr.type==UPDATE_ROWS_EVENT)
+	if(hdr.type==BL_UPDATE_ROWS_EVENT)
 		rowsold = malloc(sizeof(BlRow)*totalrows);
 	EventCursor evcur;
 	evcur.ev = ev;
@@ -714,7 +714,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 		}
 		rows[nrows] = cells;
 
-		if(hdr.type==UPDATE_ROWS_EVENT){
+		if(hdr.type==BL_UPDATE_ROWS_EVENT){
 			cellsold = malloc(nfields*sizeof(Cell));
 			isnull = ev + evcur.cur;
 			evcur.cur += bitlen; 
@@ -750,7 +750,7 @@ void rowsevFreeRows(RowsEvent *rowsev){
 		free(rowsev->rows[i]);
 	}
 	free(rowsev->rows);
-	if(rowsev->type==UPDATE_ROWS_EVENT){
+	if(rowsev->type==BL_UPDATE_ROWS_EVENT){
 		for(i = 0;i < rowsev->nrows ; ++i){
 			for(j = 0; j < rowsev->nfields;++j){
 				free(rowsev->rowsold[i][j].value);

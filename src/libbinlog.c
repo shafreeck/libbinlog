@@ -52,20 +52,20 @@ static int getRowsEvent(BinlogClient *bc,RowsEvent *rev){
 		if(ev == NULL)break;
 
 		uint8_t evtype = getEventType(ev);
-		if(evtype==FORMAT_DESCRIPTION_EVENT){
+		if(evtype==BL_FORMAT_DESCRIPTION_EVENT){
 			parseFDE(&(bc->binlog),ev);
 		}
-		if(evtype==TABLE_MAP_EVENT){
+		if(evtype==BL_TABLE_MAP_EVENT){
 			TableEv *tblev = &(bc->binlog.table);
 			parseTableMapEvent(&(bc->binlog),&(bc->binlog.table),ev);
 			bc->dataSource->position = tblev->nextpos - tblev->evlen;
 			bc->dataSource->index = 0;
 
-		}else if(evtype==WRITE_ROWS_EVENT || evtype==UPDATE_ROWS_EVENT || evtype==DELETE_ROWS_EVENT){
+		}else if(evtype==BL_WRITE_ROWS_EVENT || evtype==BL_UPDATE_ROWS_EVENT || evtype==BL_DELETE_ROWS_EVENT){
 			parseRowsEvent(&(bc->binlog),rev,ev);
 			dsFreeEvent(bc->dataSource);
 			return 1;
-		}else if(evtype==ROTATE_EVENT){
+		}else if(evtype==BL_ROTATE_EVENT){
 			RotateEvent rotate;
 			parseRotateEvent(&(bc->binlog),&rotate,ev);
 			bc->dataSource->position = rotate.position;
@@ -98,7 +98,7 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 		row.type = ev->type;
 		row.rowOld = NULL;
 		row.row = ev->rows[i];
-		if(row.type == UPDATE_ROWS_EVENT){
+		if(row.type == BL_UPDATE_ROWS_EVENT){
 			row.rowOld = ev->rowsold[i];
 		}
 		bc->_rows[i++] = row;
@@ -106,7 +106,7 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 	}
 	/*Free rows array here,for we copy all rows to bc->_rows[]*/
 	free(ev->rows);
-	if(ev->type==UPDATE_ROWS_EVENT){
+	if(ev->type==BL_UPDATE_ROWS_EVENT){
 		free(ev->rowsold);
 	}
 }
@@ -123,12 +123,12 @@ void freeBinlogRow(BinlogRow *br){
 	int i;
 	for(i=0; i < br->nfields; ++i){
 		freeCell(&(br->row[i]));	
-		if(br->type==UPDATE_ROWS_EVENT){
+		if(br->type==BL_UPDATE_ROWS_EVENT){
 			freeCell(&(br->rowOld[i]));	
 		}
 	}
 	free(br->row);
-	if(br->type==UPDATE_ROWS_EVENT){
+	if(br->type==BL_UPDATE_ROWS_EVENT){
 		free(br->rowOld);
 	}
 

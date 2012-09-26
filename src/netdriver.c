@@ -98,8 +98,8 @@ static int connectMySQL(DataSource *ds){
 	slen = strlen(ds->logfile);
 	memcpy(args+10,ds->logfile,slen);
 	argslen = 10 + slen;
-	/*Send the COM_BINLOG_DUMP command*/
-	if(!msendcmd(mysql,COM_BINLOG_DUMP,args,argslen)){
+	/*Send the M_COM_BINLOG_DUMP command*/
+	if(!msendcmd(mysql,M_COM_BINLOG_DUMP,args,argslen)){
 		snprintf(ds->errstr,BL_ERROR_SIZE,"%s",mysql->errstr);	
 		return 0;
 	}
