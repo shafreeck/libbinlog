@@ -4,6 +4,9 @@
 #include "constant.h"
 #include "datasource.h"
 
+#ifdef __cplusplus
+extern "C"{
+#endif
 typedef struct binlog_row_st{
 	int nfields;
 	int type;
@@ -59,4 +62,7 @@ void freeBinlogClient(BinlogClient *bc);
  *  Cell ptr: A Cell is a field of one row ,see logevent.h
  * */
 void printCell(Cell *cell);
+#ifdef __cplusplus
+}
+#endif
 #endif
