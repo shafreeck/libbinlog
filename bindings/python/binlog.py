@@ -1,5 +1,6 @@
 #coding:utf8
 from ctypes import *
+import time
 class Cell(Structure):
 	"""A cell is an item of one row"""
 	_fields_=[("ctype",c_int),("mtype",c_int),("length",c_int),("value",c_void_p)]
@@ -197,8 +198,8 @@ def closebinlog(binlog):
 
 if __name__ == '__main__':
 	url = 'mysql://root@10.210.210.146:3306/mysql-bin.000001'
-	with openbinlog(url,0,4,0) as binlog:
+	with openbinlog(url,1,4,0) as binlog:
 		for row in binlog:
-			print row
+			now = time.time()
+			print now, row
 	
-

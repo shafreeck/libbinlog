@@ -25,3 +25,9 @@ void freeBinlogClient(BinlogClient *bc);
 
 3. mysql5.5* 没有测试。
 4. test git
+
+
+Python bindings:
+INSTALL:
+ TODO
+
