@@ -169,10 +169,11 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	if(!dsConnect(ds)){
 		snprintf(bc->errstr,BL_ERROR_SIZE,"%s",ds->errstr);
 		bc->err=1;
+		printf("bc->dataSource:%s\n",bc->errstr);
 		return bc;
 	}
-	bc->dataSource = ds;
 
+	bc->dataSource = ds;
 	return bc;
 }
 
