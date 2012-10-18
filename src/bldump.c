@@ -36,7 +36,7 @@ int main(int argc,char *argv[]){
 			}
 			printCell(&cell);
 		}
-		printf("%s %d %d",bc->dataSource->logfile,bc->dataSource->position,bc->dataSource->index);
+		printf("%s %d %d %d",bc->dataSource->logfile,bc->dataSource->position,bc->dataSource->index,row->created);
 		printf("\n");
 		if(row->type == BL_UPDATE_ROWS_EVENT){
 			printf("uptold:");

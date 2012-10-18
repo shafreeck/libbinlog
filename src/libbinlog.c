@@ -96,6 +96,7 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 		BinlogRow row;
 		row.nfields = nfields;
 		row.type = ev->type;
+		row.created = ev->ts;
 		row.rowOld = NULL;
 		row.row = ev->rows[i];
 		if(row.type == BL_UPDATE_ROWS_EVENT){
