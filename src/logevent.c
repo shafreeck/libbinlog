@@ -214,7 +214,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 				int64_t v = readInt64(evcur);
 
 				cell.mtype = BL_MYSQL_TYPE_LONGLONG;
-				cell.ctype = UINT64;
+				cell.ctype = INT64;
 				void *value = malloc(sizeof(int64_t));
 				*(int64_t *)value = v;
 				cell.value = value;
@@ -685,7 +685,7 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	}
 	/*Decode the row images*/
 	int i,nrows=0;
-	Cell* cells,*cellsold;
+	Cell* cells,*cellsnew;
 	int totalrows = 8;
 	BlRow *rows,*rowsold;
 	rows = rowsold = NULL;
@@ -715,18 +715,21 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 		rows[nrows] = cells;
 
 		if(hdr.type==BL_UPDATE_ROWS_EVENT){
-			cellsold = malloc(nfields*sizeof(Cell));
+			/*If the event is BL_UPDATE_ROWS_EVENT , the first row-image is removed
+			 * and the second row-image is inserted, so , exchange them*/
+			rowsold[nrows] = rows[nrows];
+			cellsnew = malloc(nfields*sizeof(Cell));
 			isnull = ev + evcur.cur;
 			evcur.cur += bitlen; 
 			for(i = 0; i < nfields; ++i){
 				if(!isSet(isnull,i) && isSet(isused_u,i)){
-					cellsold[i] = value2Cell(&evcur,bl->table.types[i],bl->table.meta[i]);
+					cellsnew[i] = value2Cell(&evcur,bl->table.types[i],bl->table.meta[i]);
 				}else{
 					Cell c = {0};
-					cellsold[i] = c;
+					cellsnew[i] = c;
 				}
 			}
-			rowsold[nrows] = cellsold;
+			rows[nrows] = cellsnew;
 		}
 		++nrows;
 	}

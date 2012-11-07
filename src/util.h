@@ -21,8 +21,8 @@
 #define getUint24(A) (uint32_t)(((uint32_t)((uint8_t) (A)[0])) +\
 		(((uint32_t) ((uint8_t) (A)[1])) << 8) +\
 		(((uint32_t) ((uint8_t) (A)[2])) << 16))
-#define getInt24(A) (int32_t)(((int32_t)((int8_t) (A)[0])) +\
-		(((int32_t) ((int8_t) (A)[1])) << 8) +\
+#define getInt24(A) (int32_t)(((uint32_t)((uint8_t) (A)[0])) +\
+		(((uint32_t) ((uint8_t) (A)[1])) << 8) +\
 		(((int32_t) ((int8_t) (A)[2])) << 16))
 #define getFloat(A) (*(float*)(A))
 #define getDouble(A) (*(double*)(A))

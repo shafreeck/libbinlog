@@ -120,7 +120,7 @@ static unsigned char *getEventFromServer(DataSource *ds){
 		return NULL;
 	};
 	if(nread == 0){
-		sprintf(ds->errstr,"%s","Read all done , maybe your serverID is 0");
+		sprintf(ds->errstr,"%s","Lost connection to master");
 		return NULL;
 	}
 	if(ds->driver.net.newbuf){
@@ -128,7 +128,7 @@ static unsigned char *getEventFromServer(DataSource *ds){
 	}
 	/*Check the EOF packet*/
 	if(nread < 8 &&(uint8_t) (buf[0])==254){
-		snprintf(ds->errstr,BL_ERROR_SIZE,"%s",mysql->errstr);
+		snprintf(ds->errstr,BL_ERROR_SIZE,"Read EOF of binlog,maybe the master shutdown or your slave serverid is 0!");
 		return NULL;
 	}
 	return (unsigned char*)buf + 1;
