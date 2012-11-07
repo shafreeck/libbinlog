@@ -100,7 +100,7 @@ unsigned char *cooksalt(unsigned char cooked[20],const unsigned char *salt,size_
 	return cooked;
 }
 size_t calcAuthPktLen(const AuthPkt *pkt){
-	size_t plen = 4 + 4 + 1 + 23 +strlen(pkt->user) + 1 + 1;
+	size_t plen = 4 + 4 + 1 + 23 +strlen(pkt->user) + 1 + 1 + sizeof("mysql_native_password");
 	/*saltlen is always 20 so far,so the encoded length occupy 1 byte*/
 	if(pkt->saltlen)
 		plen += pkt->saltlen;
@@ -135,6 +135,7 @@ int writeAuthPkt(const AuthPkt *pkt,size_t plen,int fd){
 	if(pkt->database){
 		writeBinary(&io,pkt->database,strlen(pkt->database)+1);
 	}
+	//writeBinary(&io,"mysql_native_password",strlen("mysql_native_password")+1);
 
 	/*Now send the packet,send the header first*/
 	int nwrite;
@@ -218,6 +219,20 @@ int readErrorPkt(ErrorPkt *pkt,size_t plen,int fd){
 	pkt->message[left] = '\0';
 	return PROTO_OK;
 }
+int readEofPkt(EofPkt *pkt,size_t plen,int fd){
+	if(plen == 0)return PROTO_OK; // NOT CLIENT_PROTOCOL_41
+	int nread;
+	char eofbuf[4];
+	nread = anetRead(fd,eofbuf,plen);
+	if(nread<plen){
+		return PROTO_ERR;
+	}
+	vio io;
+	vioInitWithBuffer(&io,eofbuf,plen);
+	pkt->warnings = readUint16(&io);
+	pkt->status = readUint16(&io);
+	return PROTO_OK;
+}
 int readReplyPkt(ReplyPkt *pkt,size_t plen,int fd){
 	size_t left = plen;
 	uint8_t marker;
@@ -225,17 +240,27 @@ int readReplyPkt(ReplyPkt *pkt,size_t plen,int fd){
 		return PROTO_ERR;
 	left -= 1;
 	pkt->isok = 0;
-	pkt->pkt.ok.marker = marker;
+	pkt->iseof = 0;
 	if(marker==0){
 		pkt->isok = 1;
+		pkt->pkt.ok.marker = marker;
 		return readOkPkt(&(pkt->pkt.ok),left,fd);
 	}else if(marker == 0xFF){
+		pkt->pkt.err.marker = marker;
 		return readErrorPkt(&(pkt->pkt.err),left,fd);
+	}else if(marker == 0xFE && left < 8){
+		// It is an EOF packet
+		pkt->pkt.eof.marker = marker;
+		pkt->iseof = 1;
+		return readEofPkt(&(pkt->pkt.eof),left,fd);
 	}
 	return PROTO_ERR;
 }
 void tryFreeReply(ReplyPkt*pkt){
 	if(pkt){
+		if(pkt->iseof){
+			return;
+		}
 		if(pkt->pkt.err.message && !pkt->isok)
 			free(pkt->pkt.err.message);
 		if(pkt->pkt.ok.message && pkt->isok)

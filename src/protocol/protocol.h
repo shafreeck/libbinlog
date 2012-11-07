@@ -34,7 +34,6 @@ typedef struct _authPkt{
 	char saltlen;
 	char salt[20];
 	char *database;
-
 }AuthPkt;
 
 size_t calcAuthPktLen(const AuthPkt *pkt);
@@ -63,11 +62,19 @@ typedef struct _errorpkt{
 	char state[5];/*CLIENT_PROTOCOL_41 support, sqlstate (5 characters)*/
 	char *message;
 }ErrorPkt;
+typedef struct _eofpkt{
+	uint8_t marker;
+	uint16_t warnings;
+	uint16_t status;
+}EofPkt;
 typedef struct _reply{
 	int isok;
+	int iseof;
+
 	union{
 		OkPkt ok;
 		ErrorPkt err;
+		EofPkt eof;
 	}pkt;
 }ReplyPkt;
 int readReplyPkt(ReplyPkt*pkt,size_t plen,int fd);

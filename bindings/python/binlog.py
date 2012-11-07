@@ -16,23 +16,30 @@ class Cell(Structure):
 	BINARY = 9
 
 	def __str__(self):
-		if self.ctype == Cell.INT32 or self.ctype==Cell.INT8  or self.ctype == Cell.INT16:
+		if self.ctype == Cell.INT32:
 			return str(cast(self.value,POINTER(c_int32))[0])
+		elif self.ctype == Cell.INT8:
+			return str(cast(self.value,POINTER(c_int8))[0])
+		elif self.ctype == Cell.INT16:
+			return str(cast(self.value,POINTER(c_int16))[0])
 		elif self.ctype == Cell.UINT32:
 			return str(cast(self.value,POINTER(c_uint32))[0])
 		elif self.ctype == Cell.UINT64:
 			return str(cast(self.value,POINTER(c_uint64))[0])
-		elif self.ctype == Cell.FLOAT or self.ctype == Cell.DOUBLE:
+		elif self.ctype == Cell.INT64:
+			return str(cast(self.value,POINTER(c_int64))[0])
+		elif self.ctype == Cell.FLOAT:
+			return str(cast(self.value,POINTER(c_float))[0])
+		elif self.ctype == Cell.DOUBLE:
 			return str(cast(self.value,POINTER(c_double))[0])
-		elif self.ctype == Cell.STRING:
-			s =  cast(self.value,c_char_p)
-			return s.value
-		elif self.ctypes == Cell.BINARY: #TODO test about binary string
+		# In fact , mysql type binary correspond to MYSQL_TYPE_STRING(Cell.STRING) here
+		elif self.ctype == Cell.BINARY or self.ctype == Cell.STRING: 
 			s = ''
 			p = cast(self.value,POINTER(c_char))
 			for i in xrange(self.length):
 				s += p[i]
 			return s
+		return '' #Return an empty string if no type match self.ctype
 class BinlogRow(Structure):
 	_fields_=[("nfields",c_int),("type",c_int),("created",c_int),("row",POINTER(Cell)),("rowOld",POINTER(Cell))]
 class TableEv(Structure):
@@ -117,7 +124,7 @@ class Binlog:
 	BL_DELETE_ROWS_EVENT = 25 
 	BL_ENUM_END_EVENT = 28
 	def __init__(self,url,serverid):
-		self.bl = CDLL("../../src/libbinlog.so")
+		self.bl = CDLL("libbinlog.so")
 		self.connectDataSource = self.bl.connectDataSource
 		self.connectDataSource.argtypes = [c_char_p,c_ulong,c_int,c_int]
 		self.connectDataSource.restype = POINTER(BinlogClient)
@@ -146,6 +153,8 @@ class Binlog:
 		"""Get one row from binlog"""
 		prow = self.fetchOne(pointer(self.cli)) # return BinlogRow pointer
 		if not bool(prow): # NULL pointer have a False boolean value
+			if self.cli.err:
+				raise BinlogError(self.cli.errstr)
 			return None
 		row = prow[0]
 		entry = {}
@@ -153,7 +162,8 @@ class Binlog:
 		entry['tbl'] = self.cli.binlog.table.tblname
 		entry['ts'] = row.created
 		entry['nfields'] = row.nfields
-		entry['pos'] = self.cli.dataSource.contents.position
+		ds = self.cli.dataSource.contents
+		entry['pos'] ='%s/%s/%d'%(ds.logfile,ds.position,ds.index)
 		if row.type == self.BL_WRITE_ROWS_EVENT:
 			entry['act'] = 'insert'
 			entry['row']={'new':[]}
@@ -165,9 +175,14 @@ class Binlog:
 			entry['row']={'old':[]}
 		else:
 			entry['act'] = None
-		for i in xrange(row.nfields):
-			entry['row']['new'].append(str(row.row[i]))
-		if row.type == self.BL_UPDATE_ROWS_EVENT or row.type == self.BL_DELETE_ROWS_EVENT:
+
+		if row.type == self.BL_UPDATE_ROWS_EVENT or row.type == self.BL_WRITE_ROWS_EVENT:
+			for i in xrange(row.nfields):
+				entry['row']['new'].append(str(row.row[i]))
+		elif row.type == self.BL_DELETE_ROWS_EVENT:
+			for i in xrange(row.nfields):
+				entry['row']['old'].append(str(row.row[i]))
+		elif row.type == self.BL_UPDATE_ROWS_EVENT:
 			for i in xrange(row.nfields):
 				entry['row']['old'].append(str(row.rowOld[i]))
 		self.freeBinlogRow(pointer(row));
@@ -197,8 +212,8 @@ def closebinlog(binlog):
 
 
 if __name__ == '__main__':
-	url = 'mysql://root@10.210.210.146:3306/mysql-bin.000001'
-	with openbinlog(url,1,4,0) as binlog:
+	url = 'mysql://root@10.210.210.146:3306/mysql-bin.000002'
+	with openbinlog(url,10,4,0) as binlog:
 		for row in binlog:
 			now = time.time()
 			print now, row

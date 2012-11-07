@@ -13,9 +13,9 @@ int main(int argc,char *argv[]){
 	}
 	const char *url = argv[1];
 
-	BinlogClient *bc = connectDataSource(url,4,0,0);
+	BinlogClient *bc = connectDataSource(url,4,0,10);
 	if(bc->err){
-		printf("%s\n",bc->errstr);
+		printf("Error:%s\n",bc->errstr);
 		return 1;
 	}
 	BinlogRow *row;
@@ -54,6 +54,8 @@ int main(int argc,char *argv[]){
 		}
 		freeBinlogRow(row);
 	}
+	if(bc->err)
+		printf("%s\n",bc->errstr);
 	freeBinlogClient(bc);
 
 	return 0;

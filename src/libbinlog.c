@@ -30,7 +30,7 @@ void printCell(Cell *cell){
 		case DOUBLE:
 			printf("%f\t",getDouble(cell->value));
 			break;
-		case STRING:
+		case STRING: //MySQL type BINARY may be STRING
 			{   
 				char *value =(char *) cell->value;
 				printf("%s\t",(char*)value);
@@ -49,7 +49,11 @@ void printCell(Cell *cell){
 static int getRowsEvent(BinlogClient *bc,RowsEvent *rev){
 	for(;;){
 		void *ev = dsGetEvent(bc->dataSource);
-		if(ev == NULL)break;
+		if(ev == NULL){
+			bc->err = 1;
+			sprintf(bc->errstr,bc->dataSource->errstr,255);
+			break;
+		}
 
 		uint8_t evtype = getEventType(ev);
 		if(evtype==BL_FORMAT_DESCRIPTION_EVENT){
@@ -170,7 +174,6 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	if(!dsConnect(ds)){
 		snprintf(bc->errstr,BL_ERROR_SIZE,"%s",ds->errstr);
 		bc->err=1;
-		printf("bc->dataSource:%s\n",bc->errstr);
 		return bc;
 	}
 

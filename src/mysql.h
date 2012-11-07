@@ -62,5 +62,7 @@ enum _mservercmd {
 #define M_CLIENT_MULTI_STATEMENTS (1UL << 16) /* Enable/disable multi-stmt support */
 #define M_CLIENT_MULTI_RESULTS    (1UL << 17) /* Enable/disable multi-results */
 #define M_CLIENT_PS_MULTI_RESULTS (1UL << 18) /* Multi-results in PS-protocol */
+#define M_CLIENT_PLUGIN_AUTH  (1UL << 19) /* Client supports plugin authentication */
+
 
 #endif

@@ -31,8 +31,9 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	AuthPkt auth;
 	memset(&auth,0,sizeof(auth));
 	auth.clientflags = M_CLIENT_PROTOCOL_41;
-	auth.clientflags |= M_CLIENT_LONG_PASSWORD;
 	auth.clientflags |= M_CLIENT_SECURE_CONNECTION; /*Use new 4.1 authentication*/
+	auth.clientflags |= M_CLIENT_LONG_PASSWORD;
+	auth.clientflags |= M_CLIENT_LONG_FLAG;
 	auth.maxpkt = M_MAX_PACKET_SIZE;
 	auth.charset=handshake.charset;
 	mysql->maxpkt = auth.maxpkt;
@@ -62,7 +63,16 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 	/*Read reply*/
 	ReplyPkt reply;
 	readPktHeader(&header,fd);
+	mysql->pnum = header.pnum;
 	readReplyPkt(&reply,header.plen,fd);
+
+	/*Server ask for Old Password Authentication which we do not supported*/
+	if(reply.iseof){
+		sprintf(mysql->errstr,"Server ask for changing plugin authentication,but we do not support");
+		mclose(mysql);
+		return 0;
+	}
+
 	if(!reply.isok){
 		strncpy(mysql->errstr,reply.pkt.err.message,256);
 		tryFreeReply(&reply);
@@ -106,7 +116,7 @@ int msendcmd(MySQL *mysql,unsigned char cmd,const char *args,int argslen){
 	readPktHeader(&header,fd);
 	ReplyPkt reply;
 	readReplyPkt(&reply,header.plen,fd);
-	if(!reply.isok){
+	if(!reply.isok && !reply.iseof){
 		snprintf(mysql->errstr,128,"%s",reply.pkt.err.message);
 		tryFreeReply(&reply);
 		return 0;
