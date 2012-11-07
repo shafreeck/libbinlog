@@ -182,7 +182,7 @@ class Binlog:
 		elif row.type == self.BL_DELETE_ROWS_EVENT:
 			for i in xrange(row.nfields):
 				entry['row']['old'].append(str(row.row[i]))
-		elif row.type == self.BL_UPDATE_ROWS_EVENT:
+		if row.type == self.BL_UPDATE_ROWS_EVENT:
 			for i in xrange(row.nfields):
 				entry['row']['old'].append(str(row.rowOld[i]))
 		self.freeBinlogRow(pointer(row));
