@@ -5,7 +5,7 @@ void readBinary(vio *v,char *buf,size_t len){
 	assert(vioRead(v,buf,len));
 }
 void writeBinary(vio *v,const char *buf,size_t len){
-	//assert(vioWrite(v,buf,len));
+	//assert(vioWrite(v,buf,len)>=0);
 	vioWrite(v,buf,len);
 }
 /*This can be only used in buffer. It's a hack*/
