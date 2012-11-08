@@ -2,6 +2,7 @@
 #include "../anet.h"
 #include "sha1.h"
 #include <string.h>
+#include <math.h>
 int readPktHeader(PktHeader *header,int fd){
 	char buf[4]={0};
 	int nread;
@@ -99,6 +100,68 @@ unsigned char *cooksalt(unsigned char cooked[20],const unsigned char *salt,size_
 	
 	return cooked;
 }
+/*From mysql5.5.13 mysql_com.h*/
+struct rand_struct {
+	unsigned long seed1,seed2,max_value;
+	double max_value_dbl;
+};
+/*From mysql5.5.13 password.c*/
+void randominit(struct rand_struct *rand_st, unsigned long seed1, unsigned long seed2)
+{                                               /* For mysql 3.21.# */
+#ifdef HAVE_purify
+	bzero((char*) rand_st,sizeof(*rand_st));      /* Avoid UMC varnings */
+#endif
+	rand_st->max_value= 0x3FFFFFFFL;
+	rand_st->max_value_dbl=(double) rand_st->max_value;
+	rand_st->seed1=seed1%rand_st->max_value ;
+	rand_st->seed2=seed2%rand_st->max_value;
+}
+/*From mysql5.5.13 password.c*/
+double my_rnd(struct rand_struct *rand_st)
+{
+	rand_st->seed1=(rand_st->seed1*3+rand_st->seed2) % rand_st->max_value;
+	rand_st->seed2=(rand_st->seed1+rand_st->seed2+33) % rand_st->max_value;
+	return (((double) rand_st->seed1)/rand_st->max_value_dbl);
+}
+/*From mysql5.5.13 password.c*/
+void hash_old_password(unsigned long *result, const char *password, unsigned int password_len)
+{
+	register unsigned long nr=1345345333L, add=7, nr2=0x12345671L;
+	unsigned long tmp;
+	const char *password_end= password + password_len;
+	for (; password < password_end; password++)
+	{
+		if (*password == ' ' || *password == '\t')
+			continue;                                 /* skip space in password */
+		tmp= (unsigned long) (unsigned char) *password;
+		nr^= (((nr & 63)+add)*tmp)+ (nr << 8); 
+		nr2+=(nr2 << 8) ^ nr; 
+		add+=tmp;
+	}
+	result[0]=nr & (((unsigned long) 1L << 31) -1L); /* Don't use sign bit (str2int) */;
+	result[1]=nr2 & (((unsigned long) 1L << 31) -1L);
+}
+char *cooksaltOld(char cooked[9],const char salt[8],const char *passwd){
+	struct rand_struct rand_st;
+	const char *salt_end= salt + 8;
+	unsigned long hashpass[2];
+	unsigned long hashsalt[2];
+	if(passwd && passwd[0]){
+		char extra, *salt_start=cooked;
+		hash_old_password(hashpass,passwd,strlen(passwd));
+		hash_old_password(hashsalt,salt,8);
+		randominit(&rand_st,hashpass[0] ^ hashsalt[0],
+				hashpass[1] ^ hashsalt[1]);
+		for (; salt < salt_end; salt++)
+			*cooked++= (char) (floor(my_rnd(&rand_st)*31)+64);
+		extra=(char) (floor(my_rnd(&rand_st)*31));
+		while (salt_start != cooked) 
+			*(salt_start++)^=extra;
+	}
+	*cooked=0;
+	return cooked;
+}
+
 size_t calcAuthPktLen(const AuthPkt *pkt){
 	size_t plen = 4 + 4 + 1 + 23 +strlen(pkt->user) + 1 + 1 + sizeof("mysql_native_password");
 	/*saltlen is always 20 so far,so the encoded length occupy 1 byte*/
@@ -111,6 +174,7 @@ size_t calcAuthPktLen(const AuthPkt *pkt){
 /*Client Authentication Packet . Version 4.1+ */
 int writeAuthPkt(const AuthPkt *pkt,size_t plen,int fd){
 	char *buf = malloc(plen);
+	memset(buf,0,plen);
 	char zero[23]={0};
 	vio io;
 	vioInitWithBuffer(&io,buf,plen);
@@ -176,17 +240,22 @@ int readOkPkt(OkPkt *pkt,size_t plen,int fd){
 	vioInitWithBuffer(&io,okbuf,plen);
 	pkt->affected = readEncodeLength(&io);
 	pkt->insertid = readEncodeLength(&io);
-	pkt->status = readUint16(&io);
-	pkt->warnings =  readUint16(&io);
 	if(vioTell(&io)==plen) {
 		free(okbuf);
 		pkt->message = NULL;
 		return PROTO_OK;
 	}
-	uint64_t slen = readEncodeLength(&io);
-	char *msg = malloc(slen+1);
-	readBinary(&io,msg,slen);
-	msg[slen]='\0';
+	/*We assume this is CLIENT_PROTOCOL_41*/
+	pkt->status = readUint16(&io);
+	pkt->warnings =  readUint16(&io);
+
+	uint64_t slen = plen - vioTell(&io);
+	char *msg=NULL;
+	if(slen){
+		msg = malloc(slen+1);
+		readBinary(&io,msg,slen);
+		msg[slen]='\0';
+	}
 	pkt->message = msg;
 	free(okbuf);
 	return PROTO_OK;
@@ -277,7 +346,7 @@ int writeCmdPkt(CmdPkt *pkt,size_t plen,int fd){
 	vioInitWithBuffer(&io,buf,plen);
 	writeBinary(&io,(char*)&(pkt->cmd),1);
 	writeBinary(&io,pkt->args,plen-1);
-	
+
 	nwrite = anetWrite(fd,buf,plen);
 	free(buf);
 	if(nwrite==-1)return PROTO_ERR;

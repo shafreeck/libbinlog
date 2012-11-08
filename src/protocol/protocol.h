@@ -41,6 +41,7 @@ int writeHeader(size_t plen,uint8_t pnum,int fd);
 int writeAuthPkt(const AuthPkt *pkt,size_t plen,int fd);
 
 unsigned char *cooksalt(unsigned char cooked[20],const unsigned char *salt,size_t slen,const unsigned char *passwd,size_t plen);
+char *cooksaltOld(char cooked[9],const char salt[8],const char *passwd);
 
 struct _cmdpacket{
 	uint8_t cmd;

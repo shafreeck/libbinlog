@@ -1,5 +1,6 @@
 PREFIX?=/usr/local
 CFLAGS=-g -Wall -fPIC
+LDFLAGS=-lm
 
 #target to generate
 all=bldump libbinlog.so libbinlog.a

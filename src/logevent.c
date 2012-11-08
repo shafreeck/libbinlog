@@ -341,7 +341,7 @@ Cell value2Cell(EventCursor *evcur,uint8_t type,uint32_t meta){
 					case 1:
 						{
 							uint32_t v = readUint8(evcur);
-							void *value = malloc(sizeof(uint8_t));
+							void *value = malloc(sizeof(uint32_t));
 							*(uint32_t *)value = v;
 							cell.value = value;
 							cell.length = sizeof(uint32_t);
@@ -586,6 +586,8 @@ int parseFDE(Binlog *bl,uint8_t *ev){
 	return 1;
 }
 int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
+	/*clean up previous Table map event malloced*/
+	tblevFreeTableRes(&(bl->table));
 	uint32_t cur=0;
 	struct rawheader{
 		char ts[4];
@@ -645,9 +647,12 @@ int parseTableMapEvent(Binlog *bl,TableEv *tbl,uint8_t *ev){
 	return 1;
 }
 void tblevFreeTableRes(TableEv *tblev){
-	free(tblev->meta);
-	free(tblev->types);
-	free(tblev->canbenull);
+	if(tblev->meta)
+		free(tblev->meta);
+	if(tblev->types)
+		free(tblev->types);
+	if(tblev->canbenull)
+		free(tblev->canbenull);
 }
 int parseRotateEvent(Binlog *bl,RotateEvent *rotate,uint8_t *ev){
 	uint32_t cur = bl->hdrlen;
@@ -738,8 +743,6 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 	rev->rowsold = rowsold;
 	rev->nrows = nrows;
 	rev->nfields = nfields;
-	/*clean up Table map event malloced*/
-	tblevFreeTableRes(&(bl->table));
 	return 1;
 }
 void rowsevFreeRows(RowsEvent *rowsev){

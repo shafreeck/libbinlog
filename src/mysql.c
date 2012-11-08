@@ -68,9 +68,19 @@ int mconnect(MySQL *mysql,const char *host,const int port,const char *user,const
 
 	/*Server ask for Old Password Authentication which we do not supported*/
 	if(reply.iseof){
-		sprintf(mysql->errstr,"Server ask for changing plugin authentication,but we do not support");
-		mclose(mysql);
-		return 0;
+		/*Change to mysql_old_password authentication*/
+		const int SALTOLD_SIZE = 9;
+		char saltold[9]={0};
+		mysql->pnum+=1;
+		if(passwd){
+			cooksaltOld(saltold,handshake.salt,passwd);
+		}
+		writeHeader(SALTOLD_SIZE,mysql->pnum,fd);
+		anetWrite(fd,saltold,SALTOLD_SIZE);
+		/*Read reply*/
+		readPktHeader(&header,fd);
+		mysql->pnum = header.pnum;
+		readReplyPkt(&reply,header.plen,fd);
 	}
 
 	if(!reply.isok){
@@ -131,7 +141,7 @@ int msaferead(MySQL *mysql,char *buf,size_t blen,char **newbuf){
 	readPktHeader(&header,fd);
 	//printf("msaferead:plen %d\n",header.plen);
 	//printf("msaferead:pnum %d\n",header.pnum);
-	
+
 	if(blen < header.plen && newbuf!=NULL){
 		*newbuf = malloc(header.plen) ;
 		nread = anetRead(fd,*newbuf,header.plen);
@@ -146,8 +156,8 @@ int msaferead(MySQL *mysql,char *buf,size_t blen,char **newbuf){
 }
 
 /*TODO implement these functions
-int minsert(MySQL *mysql,const char *sqlfmt,...);
-int mdelete(MySQL *mysql,const char *sqlfmt,...);
-int mupdate(MySQL *mysql,const char *sqlfmt,...);
-*/
+  int minsert(MySQL *mysql,const char *sqlfmt,...);
+  int mdelete(MySQL *mysql,const char *sqlfmt,...);
+  int mupdate(MySQL *mysql,const char *sqlfmt,...);
+  */
 

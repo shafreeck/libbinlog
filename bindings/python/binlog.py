@@ -16,6 +16,9 @@ class Cell(Structure):
 	BINARY = 9
 
 	def __str__(self):
+		# if self.value is NULL
+		if not self.value:
+			return 'nul'
 		if self.ctype == Cell.INT32:
 			return str(cast(self.value,POINTER(c_int32))[0])
 		elif self.ctype == Cell.INT8:
@@ -212,8 +215,9 @@ def closebinlog(binlog):
 
 
 if __name__ == '__main__':
-	url = 'mysql://root@10.210.210.146:3306/mysql-bin.000002'
-	with openbinlog(url,10,4,0) as binlog:
+	url = 'mysql://mytrigger:1q2w3e@10.73.11.211:4880/mysql-bin.000001'
+	with openbinlog(url,11,106688,0) as binlog:
+	#with openbinlog(url,10,4,0) as binlog:
 		for row in binlog:
 			now = time.time()
 			print now, row

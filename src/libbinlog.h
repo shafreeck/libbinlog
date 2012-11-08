@@ -19,6 +19,8 @@ typedef struct binlog_client_st{
 	//for private use
 	BinlogRow *_rows;
 	int _lenRows;
+	int _cur;
+	int _startidx;
 	//end private
 
 	/*public member*/

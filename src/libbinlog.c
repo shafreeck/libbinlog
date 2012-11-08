@@ -92,10 +92,10 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 		free(bc->_rows);
 		bc->_rows = (BinlogRow *)malloc(ev->nrows * sizeof(BinlogRow));
 	}
+	bc->_cur = 0;
 	int nfields = ev->nfields;
 	bc->_lenRows = ev->nrows;
 	int i = 0;
-//	printf("bc->_lenRows is :%d\n",ev->nrows);
 	while(i < ev->nrows){
 		BinlogRow row;
 		row.nfields = nfields;
@@ -116,8 +116,10 @@ static void setRowsEventBuffer(BinlogClient *bc,RowsEvent *ev){
 	}
 }
 static BinlogRow* fetchFromBuffer(BinlogClient *bc){
-	if(bc->dataSource->index < bc->_lenRows){
-		return &(bc->_rows[bc->dataSource->index]);
+	if(bc->_cur < bc->_lenRows){
+		BinlogRow *row = &(bc->_rows[bc->_cur]);
+		bc->_cur+=1;
+		return row;
 	}else{
 		return NULL;
 	}
@@ -138,9 +140,9 @@ void freeBinlogRow(BinlogRow *br){
 	}
 
 }
-BinlogRow* fetchOne(BinlogClient *bc){
+BinlogRow* _fetchOne(BinlogClient *bc){
 	bc->dataSource->index ++;
-	if(bc->dataSource->index>= bc->_lenRows){
+	if(bc->_cur == bc->_lenRows){
 		RowsEvent rowsev;
 		int ret = getRowsEvent(bc,&rowsev);	
 		if(ret == 0){
@@ -151,8 +153,39 @@ BinlogRow* fetchOne(BinlogClient *bc){
 	}
 	return fetchFromBuffer(bc);
 }
+BinlogRow * fetchOne(BinlogClient *bc){
+	BinlogRow *row=NULL;
+	int start = bc->_startidx;
+	while(bc->_startidx){ //Skip if start index is not 0
+		uint32_t oldpos = bc->dataSource->position;
+		row = _fetchOne(bc);
+		bc->_startidx -= 1;
+		/*Wow ,  It is a long story
+		 * All we need to do this because we introduce the concept 'index'
+		 * the index incr when one of the two conditions match below:
+		 *  1. One rows event consist of multiple row-images
+		 *  2. Multiple rows event after one table map event 
+		 * If the index is specified when connectDataSource, we seek to the Table map event 
+		 * and skip all the index which less than the start index
+		 *
+		 * However, if someone specify an index which is invaild,we should know that . 
+		 * We check about the position of Table map event . If we change to next table map event
+		 * and the index is still less than the start index, we assume that the start index is
+		 * valid
+		 *
+		 * */
+		if(oldpos!=bc->dataSource->position){
+			snprintf(bc->errstr,BL_ERROR_SIZE,"Impossible index %d at position %d",start,bc->dataSource->position);
+			bc->err=1;
+			return NULL;
+		}
+	}
+	row = _fetchOne(bc);
+	return row;
+}
 BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t index,int serverid){
 	BinlogClient *bc =(BinlogClient *)malloc(sizeof(BinlogClient));
+	/*Must init before use,may be we can supply a wrapper*/
 	memset(bc,0,sizeof(BinlogClient));
 
 	DataSource *ds = (DataSource*)malloc(sizeof(DataSource));
@@ -169,7 +202,8 @@ BinlogClient *connectDataSource(const char *url,uint32_t position, uint32_t inde
 	}
 
 	ds->position = position;
-	ds->index = index;
+	ds->index = 0;
+	bc->_startidx = index;
 	ds->serverid = serverid;
 	if(!dsConnect(ds)){
 		snprintf(bc->errstr,BL_ERROR_SIZE,"%s",ds->errstr);
