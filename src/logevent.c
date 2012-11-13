@@ -704,7 +704,8 @@ int parseRowsEvent(Binlog *bl,RowsEvent *rev,uint8_t *ev){
 		if(nrows >= totalrows){
 			totalrows *= 2;
 			rows = realloc(rows,sizeof(BlRow)*totalrows);
-			rowsold = realloc(rows,sizeof(BlRow)*totalrows);
+			if(hdr.type==BL_UPDATE_ROWS_EVENT)
+				rowsold = realloc(rowsold,sizeof(BlRow)*totalrows);
 		}
 		uint8_t *isnull = ev + evcur.cur;
 		evcur.cur += bitlen; 
