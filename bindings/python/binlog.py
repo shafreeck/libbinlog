@@ -106,7 +106,8 @@ DataSource._fields_=[
 		]
 
 class BinlogClient(Structure):
-	_fields_=[("_rows",POINTER(BinlogRow)),("_lenRows",c_int),("binlog",BinlogFde),("dataSource",POINTER(DataSource)),
+	_fields_=[("_rows",POINTER(BinlogRow)),("_lenRows",c_int),("_cur",c_int),("_startidx",c_int),
+			("binlog",BinlogFde),("dataSource",POINTER(DataSource)),
 			("err",c_int),("errstr",c_char*256)]
 
 class BinlogError(Exception):
@@ -216,8 +217,8 @@ def closebinlog(binlog):
 
 if __name__ == '__main__':
 	url = 'mysql://mytrigger:1q2w3e@10.73.11.211:4880/mysql-bin.000001'
-	with openbinlog(url,11,106688,0) as binlog:
-	#with openbinlog(url,10,4,0) as binlog:
+#	url = 'mysql://mytrigger:1q2w3e@127.0.0.1:3306/mysql-bin.000001'
+	with openbinlog(url,10,4,0) as binlog:
 		for row in binlog:
 			now = time.time()
 			print now, row

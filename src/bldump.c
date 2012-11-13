@@ -13,8 +13,8 @@ int main(int argc,char *argv[]){
 	}
 	const char *url = argv[1];
 
-	//BinlogClient *bc = connectDataSource(url,11083066,2612,10);
-	BinlogClient *bc = connectDataSource(url,11083066,50000,10);
+	BinlogClient *bc = connectDataSource(url,4,0,10);
+//	BinlogClient *bc = connectDataSource(url,11083066,0,10);
 	if(bc->err){
 		printf("Error:%s\n",bc->errstr);
 		return 1;
