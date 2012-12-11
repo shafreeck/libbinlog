@@ -15,3 +15,9 @@ BinlogClient *connectDataSource(const char*url,uint32_t position,uint32_t index,
 BinlogRow* fetchOne(BinlogClient *bc);
 /*结束，释放掉BinlogClient*/
 void freeBinlogClient(BinlogClient *bc);
+
+INSTALL:
+ 1. Install to /usr/local
+ make && make install
+ 2. Install to other path
+ make && make PREFIX=/path/to/install install

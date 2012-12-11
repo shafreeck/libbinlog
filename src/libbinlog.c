@@ -141,16 +141,21 @@ void freeBinlogRow(BinlogRow *br){
 
 }
 BinlogRow* _fetchOne(BinlogClient *bc){
-	bc->dataSource->index ++;
 	if(bc->_cur == bc->_lenRows){
 		RowsEvent rowsev;
 		int ret = getRowsEvent(bc,&rowsev);	
 		if(ret == 0){
 			snprintf(bc->errstr,BL_ERROR_SIZE,"%s",bc->dataSource->errstr);
+			bc->dataSource->index = 0;
 			return NULL;
 		}
 		setRowsEventBuffer(bc,&rowsev);
 	}
+	/*Incr index , this can not be place begin of _fetchOne
+	 *Because when something wrong, getRowsEvent return 0, _fetchOne will return NULL
+	 *at this time , we should not incr index otherwise we give an error index when shutdown!
+	 * */
+	bc->dataSource->index ++;
 	return fetchFromBuffer(bc);
 }
 BinlogRow * fetchOne(BinlogClient *bc){
@@ -158,6 +163,7 @@ BinlogRow * fetchOne(BinlogClient *bc){
 	int start = bc->_startidx;
 	while(bc->_startidx){ //Skip if start index is not 0
 		uint32_t oldpos = bc->dataSource->position;
+		printf("oldpos:%d\n",oldpos);
 		row = _fetchOne(bc);
 		bc->_startidx -= 1;
 		/*Wow ,  It is a long story
@@ -175,7 +181,7 @@ BinlogRow * fetchOne(BinlogClient *bc){
 		 *
 		 * */
 		if(oldpos!=bc->dataSource->position){
-			snprintf(bc->errstr,BL_ERROR_SIZE,"Impossible index %d at position %d",start,bc->dataSource->position);
+			snprintf(bc->errstr,BL_ERROR_SIZE,"Impossible index %d at position %d",start,oldpos);
 			bc->err=1;
 			return NULL;
 		}
