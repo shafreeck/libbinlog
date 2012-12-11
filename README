@@ -2,11 +2,11 @@ libbinlog
 
 A library to parse mysql binary log
 
-特性：
-1. 自己实现的mysql通信协议（不依赖libmysqlclient）
-2. 提供简单易用的API
-3. 支持ROW 格式的binlog（不支持statement）
-4. 可直接解析文件，或连接mysql模拟slave
+Feature：
+1. Self implemence mysql protocol
+2. Simple API
+3. Just parse ROW format binary log
+4. Read from file or MySQL master
 
 API：
 /*连接数据源*/
