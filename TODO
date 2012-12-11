@@ -1,4 +1,0 @@
-1. 整理内存申请和释放方案		done
-2. 测试decimal类型				done
-3. 增加可变长Header支持			done
-4. 增加binlog支持类型判断
