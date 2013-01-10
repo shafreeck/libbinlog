@@ -163,13 +163,12 @@ BinlogRow * fetchOne(BinlogClient *bc){
 	int start = bc->_startidx;
 	while(bc->_startidx){ //Skip if start index is not 0
 		uint32_t oldpos = bc->dataSource->position;
-		printf("oldpos:%d\n",oldpos);
 		row = _fetchOne(bc);
 		bc->_startidx -= 1;
 		/*Wow ,  It is a long story
 		 * All we need to do this because we introduce the concept 'index'
 		 * the index incr when one of the two conditions match below:
-		 *  1. One rows event consist of multiple row-images
+		 *  1. One write/delete/update rows event consist of multiple row-images
 		 *  2. Multiple rows event after one table map event 
 		 * If the index is specified when connectDataSource, we seek to the Table map event 
 		 * and skip all the index which less than the start index
@@ -177,7 +176,7 @@ BinlogRow * fetchOne(BinlogClient *bc){
 		 * However, if someone specify an index which is invaild,we should know that . 
 		 * We check about the position of Table map event . If we change to next table map event
 		 * and the index is still less than the start index, we assume that the start index is
-		 * valid
+		 * invalid
 		 *
 		 * */
 		if(oldpos!=bc->dataSource->position){
