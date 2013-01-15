@@ -142,12 +142,39 @@ int msaferead(MySQL *mysql,char *buf,size_t blen,char **newbuf){
 	//printf("msaferead:plen %d\n",header.plen);
 	//printf("msaferead:pnum %d\n",header.pnum);
 
+    ReplyPkt pkt;
+	size_t left = header.plen;
+	uint8_t marker;
+	if(anetRead(fd,(char*)&marker,1)==-1)
+		return -1;
+	left -= 1;
+	pkt.isok = 1;
+	pkt.iseof = 0;
+	if(marker == 0xFF){
+        pkt.isok = 0;
+		pkt.pkt.err.marker = marker;
+		readErrorPkt(&(pkt.pkt.err),left,fd);
+	}else if(marker == 0xFE && left < 8){
+		pkt.pkt.eof.marker = marker;
+		pkt.iseof = 1;
+		readEofPkt(&(pkt.pkt.eof),left,fd);
+    }
+    if(!pkt.isok){
+        if(!pkt.iseof){
+            strncpy(mysql->errstr,pkt.pkt.err.message,256);
+        }else{
+            snprintf(mysql->errstr,255,"Read EOF packet");
+        }
+        return -1;
+    }
+
+    /*Read the content if it is not a reply packet*/
 	if(blen < header.plen && newbuf!=NULL){
 		*newbuf = malloc(header.plen) ;
-		nread = anetRead(fd,*newbuf,header.plen);
+		nread = anetRead(fd,*newbuf,left);
 	}else{
 		*newbuf = NULL;
-		nread = anetRead(fd,buf,header.plen);
+		nread = anetRead(fd,buf,left);
 	}
 	if(nread==-1){
 		sprintf(mysql->errstr,"%s",strerror(errno));
