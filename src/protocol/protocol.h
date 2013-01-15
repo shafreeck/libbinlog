@@ -80,8 +80,9 @@ typedef struct _reply{
 }ReplyPkt;
 int readReplyPkt(ReplyPkt*pkt,size_t plen,int fd);
 void tryFreeReply(ReplyPkt*pkt);
-/*int readOkPkt(OkPkt *pkt,size_t plen,int fd);
-  int readErrorPkt(ErrorPkt *pkt,size_t plen,int fd);*/
+/*int readOkPkt(OkPkt *pkt,size_t plen,int fd);*/
+int readErrorPkt(ErrorPkt *pkt,size_t plen,int fd);
+int readEofPkt(EofPkt *pkt,size_t plen,int fd);
 typedef struct _cmdpkt{
 	uint8_t cmd;
 	char *args;

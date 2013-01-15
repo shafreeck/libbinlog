@@ -127,11 +127,11 @@ static unsigned char *getEventFromServer(DataSource *ds){
 		buf = ds->driver.net.newbuf;
 	}
 	/*Check the EOF packet*/
-	if(nread < 8 &&(uint8_t) (buf[0])==254){
+	/*if(nread < 8 &&(uint8_t) (buf[0])==254){
 		snprintf(ds->errstr,BL_ERROR_SIZE,"Read EOF of binlog,maybe the master shutdown or your slave serverid is 0!");
 		return NULL;
-	}
-	return (unsigned char*)buf + 1;
+    }*/
+	return (unsigned char*)buf;
 }
 static void freeEventFromServer(DataSource *ds){
 	if(ds->driver.net.newbuf){
