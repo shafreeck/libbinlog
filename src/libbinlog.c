@@ -179,6 +179,7 @@ BinlogRow * fetchOne(BinlogClient *bc){
 		 * invalid
 		 *
 		 * */
+        freeBinlogRow(row);
 		if(oldpos!=bc->dataSource->position){
 			snprintf(bc->errstr,BL_ERROR_SIZE,"Impossible index %d at position %d",start,oldpos);
 			bc->err=1;
