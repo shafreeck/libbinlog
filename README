@@ -21,3 +21,5 @@ INSTALL:
  make && make install
  2. Install to other path
  make && make PREFIX=/path/to/install install
+
+
